@@ -1,0 +1,4023 @@
+{
+  "config_ver": "0.1.0",
+  "templates": [
+    {
+      "id": "EVT_M_RATE_HIKE",
+      "title": "央行加息",
+      "body": "利率上调，房贷和消费贷的年供都会变多；存款和货币基金收益略升。",
+      "kind": "annual_event",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "知道了",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "hit",
+              "weight": 0.7,
+              "title": "贷款利率上调 1 个百分点",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.rate_shock",
+                  "value": 0.01,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "按揭按新利率重算年供。"
+            },
+            {
+              "id": "mild",
+              "weight": 0.3,
+              "title": "只加了半个百分点",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.rate_shock",
+                  "value": 0.005,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "影响不大。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:macro",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_m_rate_hike",
+      "condition": {
+        "op": "in",
+        "path": "macro.cycle",
+        "value": [
+          "boom",
+          "slowdown"
+        ]
+      }
+    },
+    {
+      "id": "EVT_M_RATE_CUT",
+      "title": "央行降息",
+      "body": "利率下调，贷款负担变轻，存款收益变薄。",
+      "kind": "annual_event",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "知道了",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "cut",
+              "weight": 0.7,
+              "title": "贷款利率下调 1 个百分点",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.rate_shock",
+                  "value": -0.01,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "年供变轻。"
+            },
+            {
+              "id": "small",
+              "weight": 0.3,
+              "title": "只降了半个百分点",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.rate_shock",
+                  "value": -0.005,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "影响不大。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:macro",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_m_rate_cut",
+      "condition": {
+        "op": "in",
+        "path": "macro.cycle",
+        "value": [
+          "recession",
+          "recovery"
+        ]
+      }
+    },
+    {
+      "id": "EVT_M_EXPORT_SHOCK",
+      "title": "外需骤减",
+      "body": "海外订单大幅下滑，出口和制造业首当其冲。",
+      "kind": "annual_event",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1.2,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "知道了",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "hit",
+              "weight": 0.6,
+              "title": "你所在的行业受了冲击",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.income_shock",
+                  "value": -0.12,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "今年收入少了一成多。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "in",
+                    "path": "occupation.industry",
+                    "value": [
+                      "export",
+                      "manufacturing",
+                      "logistics"
+                    ]
+                  },
+                  "mult": 1.6
+                },
+                {
+                  "if": {
+                    "op": "in",
+                    "path": "occupation.industry",
+                    "value": [
+                      "public",
+                      "local_service"
+                    ]
+                  },
+                  "mult": 0.2
+                }
+              ]
+            },
+            {
+              "id": "spared",
+              "weight": 0.4,
+              "title": "你的行业没怎么受影响",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "外需冲击未波及",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "行业不同，冲击不同。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:macro",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_m_export_shock",
+      "condition": {
+        "op": "in",
+        "path": "macro.cycle",
+        "value": [
+          "slowdown",
+          "recession"
+        ]
+      }
+    },
+    {
+      "id": "EVT_M_STIMULUS",
+      "title": "刺激政策出台",
+      "body": "政府加大基建和消费补贴，复苏的信号越来越强。",
+      "kind": "annual_event",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "知道了",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "boost",
+              "weight": 0.6,
+              "title": "订单和招聘都回暖了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.income_shock",
+                  "value": 0.06,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "今年收入多了一点。"
+            },
+            {
+              "id": "slow",
+              "weight": 0.4,
+              "title": "政策落地慢，感觉不明显",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "刺激效果有限",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "政策有时滞。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:macro",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_m_stimulus",
+      "condition": {
+        "op": "in",
+        "path": "macro.cycle",
+        "value": [
+          "recession",
+          "recovery"
+        ]
+      }
+    },
+    {
+      "id": "EVT_M_INFLATION_SPIKE",
+      "title": "物价飞涨",
+      "body": "菜价、房租、油价一起涨，生活费明显变多。",
+      "kind": "annual_event",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "知道了",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "spike",
+              "weight": 0.7,
+              "title": "今年生活费多花了 8%",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.living_shock",
+                  "value": 0.08,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "通胀侵蚀了现金。"
+            },
+            {
+              "id": "mild",
+              "weight": 0.3,
+              "title": "涨了 3%",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.living_shock",
+                  "value": 0.03,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "还能接受。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:macro",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_m_inflation_spike",
+      "condition": {
+        "op": "eq",
+        "path": "macro.cycle",
+        "value": "slowdown"
+      }
+    },
+    {
+      "id": "EVT_M_MARKET_CRASH",
+      "title": "股市大跌",
+      "body": "指数一个月跌了两成，身边人都在割肉。",
+      "kind": "crisis",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "hold",
+          "text": "拿住不动",
+          "evaluate_text": "账面先亏，现金不动。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "rebound",
+              "weight": 0.55,
+              "title": "一两年后涨回来了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.market_shock",
+                  "value": -0.15,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "没在低点卖出。"
+            },
+            {
+              "id": "long",
+              "weight": 0.45,
+              "title": "跌了很久才回来",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.market_shock",
+                  "value": -0.22,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "熬过去了。"
+            }
+          ]
+        },
+        {
+          "id": "cut",
+          "text": "割肉离场",
+          "evaluate_text": "卖出有 5% 折价。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "sold",
+              "weight": 0.7,
+              "title": "卖在了低点附近",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.market_shock",
+                  "value": -0.15,
+                  "ledger": "none"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "锁定了亏损。"
+            },
+            {
+              "id": "dodge",
+              "weight": 0.3,
+              "title": "躲过了后面的下跌",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "这次割对了，下次不一定。"
+            }
+          ]
+        },
+        {
+          "id": "buy_dip",
+          "text": "逆势加仓",
+          "evaluate_text": "保留 6 个月生活费后，拿三成现金加仓。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "win",
+              "weight": 0.5,
+              "title": "低位买入，后来赚了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.market_shock",
+                  "value": -0.15,
+                  "ledger": "none"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.3,
+                    "keep_runway_months": 6,
+                    "immediate_mark": 1.1
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "逆向投资需要现金和胆量。"
+            },
+            {
+              "id": "deeper",
+              "weight": 0.5,
+              "title": "买完又跌了一轮",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.market_shock",
+                  "value": -0.22,
+                  "ledger": "none"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.3,
+                    "keep_runway_months": 6,
+                    "immediate_mark": 0.85
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "抄底抄在了半山腰。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:macro",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_m_market_crash",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "in",
+            "path": "macro.cycle",
+            "value": [
+              "slowdown",
+              "recession"
+            ]
+          },
+          {
+            "op": "or",
+            "conds": [
+              {
+                "op": "gt",
+                "path": "assets.index_fund",
+                "value": 0
+              },
+              {
+                "op": "gt",
+                "path": "assets.sector_fund",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVT_M_HOUSING_COOL",
+      "title": "楼市降温",
+      "body": "成交量萎缩，房价开始松动。",
+      "kind": "annual_event",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "知道了",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "dip",
+              "weight": 0.6,
+              "title": "房价跌了 8%",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.housing_shock",
+                  "value": -0.08,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "有房的人账面缩水，没房的人等到了机会。"
+            },
+            {
+              "id": "flat",
+              "weight": 0.4,
+              "title": "量跌价稳",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.housing_shock",
+                  "value": -0.02,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "价格还算稳。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:macro",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_m_housing_cool",
+      "condition": {
+        "op": "in",
+        "path": "macro.cycle",
+        "value": [
+          "slowdown",
+          "recession"
+        ]
+      }
+    },
+    {
+      "id": "EVT_C_PROMOTION",
+      "title": "晋升机会",
+      "body": "上级问你愿不愿意接一个更难的岗位。",
+      "kind": "annual_event",
+      "age_range": [
+        22,
+        60
+      ],
+      "weight": 1.2,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "take",
+          "text": "接下",
+          "evaluate_text": "多半能升一级；压力变大。",
+          "cost": {
+            "time": 1
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "up",
+              "weight": 0.6,
+              "title": "升职了",
+              "effects": [
+                {
+                  "op": "job_level",
+                  "value": 1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "能力被看见。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "gte",
+                    "path": "attrs.capability",
+                    "value": 65
+                  },
+                  "mult": 1.4
+                }
+              ]
+            },
+            {
+              "id": "strain",
+              "weight": 0.4,
+              "title": "升了，但压力大到身体吃不消",
+              "effects": [
+                {
+                  "op": "job_level",
+                  "value": 1,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "升职也有代价。"
+            }
+          ]
+        },
+        {
+          "id": "pass",
+          "text": "暂时不接",
+          "evaluate_text": "保持现在的节奏。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "ok",
+              "weight": 0.8,
+              "title": "维持现状",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "不接",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "量力而行。"
+            },
+            {
+              "id": "passed",
+              "weight": 0.2,
+              "title": "机会给了别人，之后难再有",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.level_pause_years",
+                  "value": 2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "机会不等人。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:career",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_c_promotion",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "and",
+            "conds": [
+              {
+                "op": "eq",
+                "path": "occupation.jobless",
+                "value": false
+              },
+              {
+                "op": "neq",
+                "path": "occupation.path",
+                "value": null
+              }
+            ]
+          },
+          {
+            "op": "neq",
+            "path": "occupation.path",
+            "value": "founder"
+          },
+          {
+            "op": "neq",
+            "path": "occupation.level",
+            "value": "principal"
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVT_C_LAYOFF",
+      "title": "部门收缩",
+      "body": "公司要裁一批人，名单上可能有你。",
+      "kind": "crisis",
+      "age_range": [
+        22,
+        62
+      ],
+      "weight": 1.2,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "severance",
+          "text": "接受补偿离开",
+          "evaluate_text": "约 3 个月工资的补偿；之后失业。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "paid",
+              "weight": 0.8,
+              "title": "拿到 N+1 补偿",
+              "effects": [
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": "0.25 * annual_income",
+                  "sub": "severance",
+                  "ledger": "I"
+                }
+              ],
+              "review_text": "补偿约三个月工资，开始找工作。"
+            },
+            {
+              "id": "less",
+              "weight": 0.2,
+              "title": "补偿打了折",
+              "effects": [
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": "0.12 * annual_income",
+                  "sub": "severance",
+                  "ledger": "I"
+                }
+              ],
+              "review_text": "补偿比预期少。"
+            }
+          ]
+        },
+        {
+          "id": "stay",
+          "text": "争取留下，接受降薪",
+          "evaluate_text": "可能保住工作，也可能什么都拿不到。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "kept",
+              "weight": 0.55,
+              "title": "留下了，降薪一成五",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.pay_cut_years",
+                  "value": 2,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "保住了饭碗。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "gte",
+                    "path": "attrs.reputation",
+                    "value": 60
+                  },
+                  "mult": 1.3
+                }
+              ]
+            },
+            {
+              "id": "cut",
+              "weight": 0.45,
+              "title": "还是被裁了，没有补偿",
+              "effects": [
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "两头落空。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:career",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_c_layoff",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "and",
+            "conds": [
+              {
+                "op": "eq",
+                "path": "occupation.jobless",
+                "value": false
+              },
+              {
+                "op": "neq",
+                "path": "occupation.path",
+                "value": null
+              }
+            ]
+          },
+          {
+            "op": "in",
+            "path": "occupation.path",
+            "value": [
+              "employee",
+              "professional",
+              "trade"
+            ]
+          },
+          {
+            "op": "in",
+            "path": "macro.cycle",
+            "value": [
+              "slowdown",
+              "recession"
+            ]
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_SEVERANCE",
+          "title": "请律师看劳动合同",
+          "fee": 3000,
+          "fee_formula": "clamp(0.0*stakes, 3000, 3000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 3000,
+            "max": 3000
+          },
+          "reveals": [
+            "hidden_risk",
+            "p_band"
+          ],
+          "hint_text": "花 3 千请律师。",
+          "preview_text": "你会看到：争取留下的大致把握，以及补偿有没有被少算。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_C_JOB_FOUND",
+      "title": "找到新工作",
+      "body": "投了几十份简历，终于有了回音。",
+      "kind": "annual_event",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 3,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "入职",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "hired",
+              "weight": 0.75,
+              "title": "重新上岗",
+              "effects": [
+                {
+                  "op": "hire_job",
+                  "value": {
+                    "level_rel": "same"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "失业结束。"
+            },
+            {
+              "id": "lower",
+              "weight": 0.25,
+              "title": "降了一级才找到",
+              "effects": [
+                {
+                  "op": "hire_job",
+                  "value": {
+                    "level_rel": -1
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "先上车再说。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:career",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_c_job_found",
+      "condition": {
+        "op": "eq",
+        "path": "occupation.jobless",
+        "value": true
+      }
+    },
+    {
+      "id": "EVT_C_SIDE_GIG",
+      "title": "有人找你接私活",
+      "body": "朋友公司需要一个有经验的人周末帮忙。",
+      "kind": "annual_event",
+      "age_range": [
+        22,
+        60
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "take",
+          "text": "接（占 2 格时间）",
+          "evaluate_text": "多一份收入（约 1–1.5 个月工资），少一点休息。",
+          "cost": {
+            "time": 2
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "paid",
+              "weight": 0.7,
+              "title": "多赚了一笔",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": "0.12 * annual_income",
+                  "sub": "side_income",
+                  "ledger": "I"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "多劳多得。"
+            },
+            {
+              "id": "conflict",
+              "weight": 0.3,
+              "title": "被公司发现，挨了批评",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": "0.06 * annual_income",
+                  "sub": "side_income",
+                  "ledger": "I"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.reputation",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "兼职也有风险。"
+            }
+          ]
+        },
+        {
+          "id": "decline",
+          "text": "不接",
+          "evaluate_text": "保持休息。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "rest",
+              "weight": 0.9,
+              "title": "周末陪家人",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "休息也重要。"
+            },
+            {
+              "id": "meh",
+              "weight": 0.1,
+              "title": "有点可惜",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "未接",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:career",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_c_side_gig",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "and",
+            "conds": [
+              {
+                "op": "eq",
+                "path": "occupation.jobless",
+                "value": false
+              },
+              {
+                "op": "neq",
+                "path": "occupation.path",
+                "value": null
+              }
+            ]
+          },
+          {
+            "op": "neq",
+            "path": "occupation.path",
+            "value": "founder"
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVT_C_PUBLIC_REFORM",
+      "title": "单位改革",
+      "body": "事业单位推行绩效改革，干得多拿得多。",
+      "kind": "annual_event",
+      "age_range": [
+        22,
+        60
+      ],
+      "weight": 0.6,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "知道了",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "gain",
+              "weight": 0.5,
+              "title": "绩效好，收入涨了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.income_shock",
+                  "value": 0.05,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "改革对你有利。"
+            },
+            {
+              "id": "lose",
+              "weight": 0.5,
+              "title": "绩效一般，奖金少了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.income_shock",
+                  "value": -0.04,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "铁饭碗也有波动。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:career",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_c_public_reform",
+      "condition": {
+        "op": "eq",
+        "path": "occupation.path",
+        "value": "public"
+      }
+    },
+    {
+      "id": "EVT_C_FREELANCE_DROUGHT",
+      "title": "淡季没活",
+      "body": "连续几个月没接到单子。",
+      "kind": "annual_event",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "熬着",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "dry",
+              "weight": 0.6,
+              "title": "收入少了两成",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.income_shock",
+                  "value": -0.2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "自由职业的代价。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 1.5
+                }
+              ]
+            },
+            {
+              "id": "recover",
+              "weight": 0.4,
+              "title": "后半年接到大单",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.income_shock",
+                  "value": 0.05,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "熬过去了。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:career",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_c_freelance_drought",
+      "condition": {
+        "op": "eq",
+        "path": "occupation.path",
+        "value": "freelance"
+      }
+    },
+    {
+      "id": "EVT_A_RENT_UP",
+      "title": "房东涨租",
+      "body": "房东说下个月起房租涨一成。",
+      "kind": "annual_event",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "续租",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "up",
+              "weight": 0.7,
+              "title": "生活费多了一点",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.living_shock",
+                  "value": 0.04,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "租房的不确定性。"
+            },
+            {
+              "id": "move",
+              "weight": 0.3,
+              "title": "搬了家",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -5000,
+                  "sub": "moving",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.living_shock",
+                  "value": 0.02,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "折腾一下。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:assets",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_a_rent_up",
+      "condition": {
+        "op": "eq",
+        "path": "flags.has_house",
+        "value": false
+      }
+    },
+    {
+      "id": "EVT_A_HOUSE_REPAIR",
+      "title": "房子漏水",
+      "body": "房子要大修。",
+      "kind": "annual_event",
+      "age_range": [
+        25,
+        64
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "修",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "small",
+              "weight": 0.7,
+              "title": "花了 1.5 万",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -15000,
+                  "sub": "repair",
+                  "ledger": "E"
+                }
+              ],
+              "review_text": "房子也有持有成本。"
+            },
+            {
+              "id": "big",
+              "weight": 0.3,
+              "title": "花了 4 万",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -40000,
+                  "sub": "repair",
+                  "ledger": "E"
+                }
+              ],
+              "review_text": "持有成本不小。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:assets",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_a_house_repair",
+      "condition": {
+        "op": "eq",
+        "path": "flags.has_house",
+        "value": true
+      }
+    },
+    {
+      "id": "EVT_A_FRIEND_LOAN",
+      "title": "朋友借钱",
+      "body": "老朋友开口借 3 万，说半年就还。",
+      "kind": "annual_event",
+      "age_range": [
+        22,
+        60
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "lend",
+          "text": "借给他",
+          "evaluate_text": "现金可能少 3 万。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "repaid",
+              "weight": 0.55,
+              "title": "按时还了",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "借出已还",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "情谊还在。"
+            },
+            {
+              "id": "lost",
+              "weight": 0.45,
+              "title": "钱要不回来了",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -30000,
+                  "sub": "bad_loan",
+                  "ledger": "E"
+                }
+              ],
+              "review_text": "借钱前想好能不能承受。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 30000
+          },
+          "disabled_reason": "手头不够 3 万"
+        },
+        {
+          "id": "refuse",
+          "text": "婉拒",
+          "evaluate_text": "不动现金。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "ok",
+              "weight": 0.6,
+              "title": "他理解",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "婉拒",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "守住边界。"
+            },
+            {
+              "id": "cold",
+              "weight": 0.4,
+              "title": "关系淡了",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.network",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "边界也有代价。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:assets",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_a_friend_loan"
+    },
+    {
+      "id": "EVT_A_SCAM",
+      "title": "一笔「保本高收益」的理财",
+      "body": "熟人推荐一个年化 15% 的「保本」产品。",
+      "kind": "annual_event",
+      "age_range": [
+        25,
+        64
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "invest",
+          "text": "投 5 万试试",
+          "evaluate_text": "可能赚 7,500，也可能亏掉 5 万。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "scam",
+              "weight": 0.75,
+              "title": "平台跑路了",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -50000,
+                  "sub": "fraud_loss",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "高收益又保本，通常是陷阱。"
+            },
+            {
+              "id": "paid",
+              "weight": 0.25,
+              "title": "居然拿到了一年利息",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": 7500,
+                  "sub": "other_income",
+                  "ledger": "I"
+                }
+              ],
+              "review_text": "这次运气好，下次不一定。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 50000
+          },
+          "disabled_reason": "手头不够 5 万"
+        },
+        {
+          "id": "skip",
+          "text": "不碰",
+          "evaluate_text": "不动现金。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "safe",
+              "weight": 0.9,
+              "title": "后来听说平台爆雷了",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.cognition",
+                  "value": 2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "识别风险也是能力。"
+            },
+            {
+              "id": "meh",
+              "weight": 0.1,
+              "title": "无事发生",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "拒绝",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:assets",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_a_scam",
+      "intel_offers": [
+        {
+          "id": "INTEL_DUE_DILIGENCE",
+          "title": "花钱查一下这个平台",
+          "fee": 2000,
+          "fee_formula": "clamp(0.0*stakes, 2000, 2000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 2000,
+            "max": 2000
+          },
+          "reveals": [
+            "hidden_risk",
+            "p_band"
+          ],
+          "hint_text": "花 2 千查工商登记和资金托管。",
+          "preview_text": "你会看到：这个平台有没有银行托管、实际控制人是否涉诉，以及同类产品出事的比例。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_A_INHERITANCE",
+      "title": "一笔遗产",
+      "body": "长辈留下了一笔钱。",
+      "kind": "annual_event",
+      "age_range": [
+        35,
+        64
+      ],
+      "weight": 0.4,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "收下",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "some",
+              "weight": 0.7,
+              "title": "收到 5 万",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": 50000,
+                  "sub": "inheritance",
+                  "ledger": "I"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_inheritance",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "感念长辈。"
+            },
+            {
+              "id": "more",
+              "weight": 0.3,
+              "title": "收到 20 万",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": 200000,
+                  "sub": "inheritance",
+                  "ledger": "I"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_inheritance",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "一笔不小的钱。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "eq",
+                    "path": "origin",
+                    "value": "wealthy"
+                  },
+                  "mult": 2.5
+                },
+                {
+                  "if": {
+                    "op": "eq",
+                    "path": "origin",
+                    "value": "humble"
+                  },
+                  "mult": 0.3
+                }
+              ]
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:assets",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_a_inheritance"
+    },
+    {
+      "id": "EVT_V_BIG_CLIENT",
+      "title": "大客户上门",
+      "body": "一家大公司想长期采购你的产品，但要压价两成。",
+      "kind": "annual_event",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "accept",
+          "text": "接单，以量换价",
+          "evaluate_text": "需求 +15–25%，单价 −10–15%。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "scale",
+              "weight": 0.6,
+              "title": "规模上来了",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "boost_demand",
+                    "demand_mult": 1.25,
+                    "mult": 1.25
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "set_price",
+                    "price_mult": 0.9,
+                    "price": 0.9
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "薄利多销。"
+            },
+            {
+              "id": "squeeze",
+              "weight": 0.4,
+              "title": "大客户拖款",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "boost_demand",
+                    "demand_mult": 1.15,
+                    "mult": 1.15
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "set_price",
+                    "price_mult": 0.85,
+                    "price": 0.85
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "现金流被占用了。"
+            }
+          ]
+        },
+        {
+          "id": "decline",
+          "text": "不接，守住价格",
+          "evaluate_text": "价格不变。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "ok",
+              "weight": 0.7,
+              "title": "维持现状",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "拒单",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "保住毛利。"
+            },
+            {
+              "id": "lost",
+              "weight": 0.3,
+              "title": "对手接了，抢走一部分客户",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "boost_demand",
+                    "demand_mult": 0.92,
+                    "mult": 0.92
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不接也有代价。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:venture",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_v_big_client",
+      "condition": {
+        "op": "eq",
+        "path": "venture.active",
+        "value": true
+      }
+    },
+    {
+      "id": "EVT_V_COMPETITOR",
+      "title": "对手降价",
+      "body": "竞争对手大幅降价抢市场。",
+      "kind": "annual_event",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "match",
+          "text": "跟着降价",
+          "evaluate_text": "单价下降。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "hold",
+              "weight": 0.6,
+              "title": "守住了份额",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "set_price",
+                    "price_mult": 0.92,
+                    "price": 0.92
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "价格战伤毛利。"
+            },
+            {
+              "id": "war",
+              "weight": 0.4,
+              "title": "价格战打了两年",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "set_price",
+                    "price_mult": 0.86,
+                    "price": 0.86
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "没有赢家。"
+            }
+          ]
+        },
+        {
+          "id": "quality",
+          "text": "不降价，做差异化（花 2 万）",
+          "evaluate_text": "个人现金 2 万投进企业。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "win",
+              "weight": 0.5,
+              "title": "老客户留下了",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "invest",
+                    "amount": 20000,
+                    "demand_mult": 1.05
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "差异化有效。"
+            },
+            {
+              "id": "lose",
+              "weight": 0.5,
+              "title": "客户还是走了一批",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "invest",
+                    "amount": 20000,
+                    "demand_mult": 0.88
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "差异化需要时间。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 20000
+          },
+          "disabled_reason": "需要 2 万"
+        }
+      ],
+      "tags": [
+        "subsystem:venture",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_v_competitor",
+      "condition": {
+        "op": "eq",
+        "path": "venture.active",
+        "value": true
+      }
+    },
+    {
+      "id": "EVT_V_HIRE_STAR",
+      "title": "能人想加盟",
+      "body": "一个很强的人想加入，但要高薪。",
+      "kind": "annual_event",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "hire",
+          "text": "招进来",
+          "evaluate_text": "编制 +1（年成本 8.4 万）。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "star",
+              "weight": 0.55,
+              "title": "带来了新客户",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "hire",
+                    "headcount": 1,
+                    "n": 1
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "boost_demand",
+                    "demand_mult": 1.2,
+                    "mult": 1.2
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "人对了，事就顺。"
+            },
+            {
+              "id": "cost",
+              "weight": 0.45,
+              "title": "人很贵，效果一般",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "hire",
+                    "headcount": 1,
+                    "n": 1
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "多了一份成本。"
+            }
+          ]
+        },
+        {
+          "id": "pass",
+          "text": "不招",
+          "evaluate_text": "成本不变。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "ok",
+              "weight": 0.8,
+              "title": "维持",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "不招",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "控制成本。"
+            },
+            {
+              "id": "rival",
+              "weight": 0.2,
+              "title": "他去了对手那里",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "boost_demand",
+                    "demand_mult": 0.95,
+                    "mult": 0.95
+                  },
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:venture",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_v_hire_star",
+      "condition": {
+        "op": "eq",
+        "path": "venture.active",
+        "value": true
+      }
+    },
+    {
+      "id": "EVT_V_POLICY_SUPPORT",
+      "title": "小微企业扶持",
+      "body": "政府给小微企业减税和贴息。",
+      "kind": "annual_event",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "申请",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "got",
+              "weight": 0.7,
+              "title": "拿到了 2 万补贴（进企业账）",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "subsidy",
+                    "amount": 20000
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "政策红利。"
+            },
+            {
+              "id": "miss",
+              "weight": 0.3,
+              "title": "材料没准备好，没申请上",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "未获补贴",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "信息也是资源。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:venture",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_v_policy_support",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "venture.active",
+            "value": true
+          },
+          {
+            "op": "in",
+            "path": "macro.cycle",
+            "value": [
+              "recession",
+              "recovery"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVT_V_SUPPLY_SHOCK",
+      "title": "原材料涨价",
+      "body": "上游涨价，成本压力陡增。",
+      "kind": "annual_event",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "扛着",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "cost",
+              "weight": 0.7,
+              "title": "单位成本涨了 10%",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "cost_shock",
+                    "cost_mult": 1.1
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "利润被挤压。"
+            },
+            {
+              "id": "pass_on",
+              "weight": 0.3,
+              "title": "成功转嫁给客户",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "set_price",
+                    "price_mult": 1.05,
+                    "price": 1.05
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "有定价权就是好。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:venture",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_v_supply_shock",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "venture.active",
+            "value": true
+          },
+          {
+            "op": "in",
+            "path": "macro.cycle",
+            "value": [
+              "boom",
+              "slowdown"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVT_P_ILLNESS",
+      "title": "生了一场病",
+      "body": "体检查出问题，需要治疗和休养。",
+      "kind": "annual_event",
+      "age_range": [
+        25,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "治疗",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "minor",
+              "weight": 0.75,
+              "title": "花了 1.5 万，休了一个月",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -15000,
+                  "sub": "medical",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "健康是一切的底。"
+            },
+            {
+              "id": "major",
+              "weight": 0.25,
+              "title": "花了 6 万，休了半年",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -60000,
+                  "sub": "medical",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -15,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.income_shock",
+                  "value": -0.4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "一场大病，收入也受影响。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "lt",
+                    "path": "attrs.health",
+                    "value": 50
+                  },
+                  "mult": 2
+                }
+              ]
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:personal",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_p_illness"
+    },
+    {
+      "id": "EVT_P_MARRIAGE",
+      "title": "遇到对的人",
+      "body": "你们想一起生活。",
+      "kind": "annual_event",
+      "age_range": [
+        24,
+        40
+      ],
+      "weight": 1.5,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "marry",
+          "text": "结婚（婚礼约 6 万）",
+          "evaluate_text": "婚礼约 1.5–6 万；家庭 +12 以上；生活费每年 +8 千，伴侣收入并入。",
+          "cost": {},
+          "stakes_class": "family",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "happy",
+              "weight": 0.8,
+              "title": "成了家",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -60000,
+                  "sub": "wedding",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.has_partner",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 15,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": 8,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "家庭开销多了，双人收入也多了。"
+            },
+            {
+              "id": "simple",
+              "weight": 0.2,
+              "title": "简单办了，省下钱",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -15000,
+                  "sub": "wedding",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.has_partner",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 12,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "日子是自己的。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 15000
+          },
+          "disabled_reason": "手头不够 1.5 万办婚礼"
+        },
+        {
+          "id": "wait",
+          "text": "再等等",
+          "evaluate_text": "不花钱。",
+          "cost": {},
+          "stakes_class": "family",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "wait",
+              "weight": 0.7,
+              "title": "感情还在",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "暂缓",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "split",
+              "weight": 0.3,
+              "title": "最后分开了",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "有些事等不得。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:personal",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_p_marriage",
+      "condition": {
+        "op": "eq",
+        "path": "flags.has_partner",
+        "value": false
+      }
+    },
+    {
+      "id": "EVT_P_CHILD",
+      "title": "要不要孩子",
+      "body": "伴侣想要一个孩子。",
+      "kind": "annual_event",
+      "age_range": [
+        26,
+        42
+      ],
+      "weight": 1.5,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "yes",
+          "text": "要（每年多 1.8 万开销）",
+          "evaluate_text": "生活费每年 +1.8 万，家庭明显上升。",
+          "cost": {},
+          "stakes_class": "family",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "born",
+              "weight": 0.85,
+              "title": "孩子出生了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.has_child",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 12,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": 6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "开销大了，日子满了。"
+            },
+            {
+              "id": "hard",
+              "weight": 0.15,
+              "title": "孕育不顺，花了不少钱",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -30000,
+                  "sub": "medical",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.has_child",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 8,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "来之不易。"
+            }
+          ]
+        },
+        {
+          "id": "no",
+          "text": "暂时不要",
+          "evaluate_text": "开销不变。",
+          "cost": {},
+          "stakes_class": "family",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "ok",
+              "weight": 0.7,
+              "title": "两人世界",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "暂不要孩子",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "tension",
+              "weight": 0.3,
+              "title": "为这事吵了几次",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": -5,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:personal",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_p_child",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "flags.has_partner",
+            "value": true
+          },
+          {
+            "op": "eq",
+            "path": "flags.has_child",
+            "value": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVT_P_BURNOUT",
+      "title": "过劳预警",
+      "body": "连续加班，体检报告一片红。",
+      "kind": "annual_event",
+      "age_range": [
+        22,
+        64
+      ],
+      "weight": 1.5,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "调整",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "rest",
+              "weight": 0.6,
+              "title": "请了假，缓过来了",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "身体在提醒你。"
+            },
+            {
+              "id": "ignore",
+              "weight": 0.4,
+              "title": "没停下来，落下病根",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -10,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "过劳的账迟早要还。"
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:personal",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_p_burnout",
+      "condition": {
+        "op": "gte",
+        "path": "time.used",
+        "value": 12
+      }
+    },
+    {
+      "id": "EVT_P_FITNESS",
+      "title": "开始锻炼",
+      "body": "朋友拉你一起健身。",
+      "kind": "annual_event",
+      "age_range": [
+        20,
+        60
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "去",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "habit",
+              "weight": 0.6,
+              "title": "坚持下来了",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": 6,
+                  "ledger": "none"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": -3000,
+                  "sub": "fitness",
+                  "ledger": "E"
+                }
+              ],
+              "review_text": "健康是长期投资。"
+            },
+            {
+              "id": "quit",
+              "weight": 0.4,
+              "title": "办了卡没去几次",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -3000,
+                  "sub": "fitness",
+                  "ledger": "E"
+                }
+              ]
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:personal",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_p_fitness"
+    },
+    {
+      "id": "EVT_O_NETWORK",
+      "title": "老同学聚会",
+      "body": "多年没见的同学聚在一起，有人在做大项目。",
+      "kind": "annual_event",
+      "age_range": [
+        25,
+        55
+      ],
+      "weight": 0.8,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ack",
+          "text": "参加",
+          "evaluate_text": "自动结算",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "lead",
+              "weight": 0.4,
+              "title": "认识了几个有用的人",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.network",
+                  "value": 6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "人脉是一种资产。"
+            },
+            {
+              "id": "nostalgia",
+              "weight": 0.6,
+              "title": "叙了叙旧",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": 2,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "auto_pick": true
+        },
+        {
+          "id": "noop",
+          "text": "（占位，不展示）",
+          "evaluate_text": "schema 要求至少两个选项；本选项永不可见",
+          "cost": {},
+          "stakes_class": "other",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "a",
+              "weight": 1,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "weight": 0,
+              "title": "无事",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "无",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.__never__",
+            "value": true
+          }
+        }
+      ],
+      "tags": [
+        "subsystem:events",
+        "presentation:notice"
+      ],
+      "causal_key": "evt_o_network"
+    },
+    {
+      "id": "EVT_O_LOTTERY_HOUSE",
+      "title": "摇到一套共有产权房",
+      "body": "单位分到一个低价购房名额。",
+      "kind": "annual_event",
+      "age_range": [
+        25,
+        45
+      ],
+      "weight": 0.6,
+      "opportunity": true,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "buy",
+          "text": "买（价格只有市价六成）",
+          "evaluate_text": "首付按低价算；可能是一辈子少有的便宜。",
+          "cost": {},
+          "stakes_class": "housing",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "got",
+              "weight": 0.9,
+              "title": "买下了",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "housing",
+                    "size": 0.6,
+                    "price_mult": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "mortgage",
+                    "ltv": "city_max",
+                    "term_years": 25
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "tax_event",
+                  "value": "transaction_tax_housing",
+                  "ledger": "T"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.has_house",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "抓住了一次机会。"
+            },
+            {
+              "id": "fail",
+              "weight": 0.1,
+              "title": "资格审核没过",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "未过审",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value_path": "computed.min_down_payment_lottery"
+          },
+          "disabled_reason": "首付不够"
+        },
+        {
+          "id": "skip",
+          "text": "放弃",
+          "evaluate_text": "",
+          "cost": {},
+          "stakes_class": "housing",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "skip",
+              "weight": 0.8,
+              "title": "放弃了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.missed_windows",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "错过一次。"
+            },
+            {
+              "id": "ok",
+              "weight": 0.2,
+              "title": "无所谓",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "放弃",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:events",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_o_lottery_house",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "flags.has_house",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "path": "occupation.path",
+            "value": "public"
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVT_O_WIND",
+      "title": "风口来了",
+      "body": "一个新行业突然火了，身边有人辞职去做。",
+      "kind": "annual_event",
+      "age_range": [
+        22,
+        55
+      ],
+      "weight": 0.8,
+      "opportunity": true,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "ride",
+          "text": "拿三成积蓄买这个行业的基金",
+          "evaluate_text": "三成现金买行业基金；可能 +30%，也可能 −30%。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "ride",
+              "weight": 0.45,
+              "title": "风口上真的赚到了",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.3,
+                    "immediate_mark": 1.3
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "看准了方向。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.3
+                }
+              ]
+            },
+            {
+              "id": "late",
+              "weight": 0.55,
+              "title": "进去时已是山顶",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.3,
+                    "immediate_mark": 0.7
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "风口来得快，走得也快。"
+            }
+          ],
+          "decision_tags": [
+            "window"
+          ]
+        },
+        {
+          "id": "watch",
+          "text": "旁观",
+          "evaluate_text": "不动现金。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "missed",
+              "weight": 0.45,
+              "title": "后来真涨了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.missed_windows",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "错过了。"
+            },
+            {
+              "id": "dodged",
+              "weight": 0.55,
+              "title": "后来泡沫破了",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.cognition",
+                  "value": 2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "冷静也是能力。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "subsystem:events",
+        "presentation:choice",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_o_wind",
+      "intel_offers": [
+        {
+          "id": "INTEL_WIND",
+          "title": "买一份行业深度报告",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*investable, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "investable",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "industry_outlook",
+            "p_band"
+          ],
+          "hint_text": "花投入金额的 2%。",
+          "preview_text": "你会看到：这个行业现在处在早期、中期还是泡沫期，以及进场后一年的收益区间。",
+          "changes_true_probability": false
+        }
+      ]
+    }
+  ]
+}

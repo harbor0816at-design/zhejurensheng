@@ -1,0 +1,923 @@
+{
+  "config_ver": "1.0.0",
+  "templates": [
+    {
+      "id": "EVT_JOB_SWITCH",
+      "title": "猎头来电",
+      "body": "有人用更高的名义薪酬邀你转行。对方行业这几年波动不小，你手头的信息并不完整。",
+      "kind": "major_decision",
+      "age_range": [
+        24,
+        45
+      ],
+      "weight": 1.2,
+      "opportunity": true,
+      "once": false,
+      "info_mode": "incomplete",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "flag",
+            "flag": "has_job"
+          },
+          {
+            "op": "neq",
+            "path": "occupation.track",
+            "value": "founder"
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_INDUSTRY_OUTLOOK",
+          "title": "买一份行业展望",
+          "fee": 5000,
+          "reveals": [
+            "industry_outlook",
+            "p_band",
+            "hidden_risk"
+          ]
+        }
+      ],
+      "causal_key": "career.switch",
+      "tags": [
+        "career",
+        "income"
+      ],
+      "options": [
+        {
+          "id": "accept",
+          "text": "接受offer，转行",
+          "cost": {
+            "time": 1,
+            "cash": 0
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "opportunity_cost_of_pass": "keep_current_tenure",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "fit",
+              "weight": 0.55,
+              "weight_formula": "0.45 + 0.3*(capability/100) + 0.1*intel_bonus",
+              "title": "新工作站稳了",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "track": "employee",
+                    "level": "mid",
+                    "industry": "from_event"
+                  },
+                  "ledger": "none",
+                  "memo": "转职成功"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "network",
+                  "value": 4,
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "mismatch",
+              "weight": 0.3,
+              "title": "新环境不适应，一年后职级停摆",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "track": "employee",
+                    "level": "mid",
+                    "level_pause": true
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "happiness",
+                  "value": -8,
+                  "ledger": "none"
+                }
+              ],
+              "chain": {
+                "enqueue_template": "EVT_JOB_SWITCH_AFTERMATH",
+                "fire_after_years": 1
+              }
+            },
+            {
+              "id": "layoff_soon",
+              "weight": 0.15,
+              "weight_formula": "0.15 + recession_boost",
+              "title": "入职第二年遇到收缩",
+              "delay_years": 1,
+              "effects": [
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "reputation",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "decline",
+          "text": "留下，继续当前路径",
+          "cost": {
+            "time": 0
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "opportunity_cost_of_pass": "forgo_higher_nominal_wage",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "stable",
+              "weight": 0.8,
+              "title": "原岗位平稳",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "拒绝转行",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "stagnate",
+              "weight": 0.2,
+              "title": "错过窗口，之后两年晋升变慢",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.missed_career_window",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "happiness",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EVT_BUY_HOUSE",
+      "title": "要不要买下这套房",
+      "body": "中介把一套符合首付能力的住宅摆到你面前。利率、税费和未来租金都不确定。买下会锁住流动性。",
+      "kind": "major_decision",
+      "age_range": [
+        26,
+        45
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "flags.has_house",
+            "value": false
+          },
+          {
+            "op": "gte",
+            "path": "computed.liquid_after_down",
+            "value": 0
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_HOUSING_CYCLE",
+          "title": "请人做一份区域与利率情景分析",
+          "fee_formula": "clamp(0.02*housing_price, 4000, 20000)",
+          "fee": 8000,
+          "reveals": [
+            "industry_outlook",
+            "debt_roll_risk",
+            "p_band"
+          ]
+        }
+      ],
+      "causal_key": "housing.purchase",
+      "tags": [
+        "housing",
+        "debt",
+        "cashflow"
+      ],
+      "options": [
+        {
+          "id": "buy_mortgage",
+          "text": "首付购房，按揭 25 年",
+          "cost": {
+            "time": 1,
+            "cash": 0
+          },
+          "stakes_class": "housing",
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value_path": "computed.min_down_payment"
+          },
+          "disabled_reason": "流动资金不够支付首付和税费",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "closed",
+              "weight": 0.85,
+              "title": "成交",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "housing"
+                  },
+                  "ledger": "F",
+                  "memo": "购房首付与税费"
+                },
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "mortgage",
+                    "term_years": 25
+                  },
+                  "ledger": "F",
+                  "memo": "按揭放款"
+                },
+                {
+                  "op": "tax_event",
+                  "value": "transaction_tax_housing",
+                  "ledger": "T"
+                }
+              ]
+            },
+            {
+              "id": "failed_close",
+              "weight": 0.15,
+              "title": "评估或批贷未过，损失中介与评估费",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -6000,
+                  "ledger": "E",
+                  "memo": "交易失败的沉没成本"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wait",
+          "text": "再等一等，继续租住",
+          "cost": {
+            "time": 0
+          },
+          "stakes_class": "housing",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "opportunity_cost_of_pass": "possible_price_up",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "rent_ok",
+              "weight": 0.7,
+              "title": "继续租，现金保留",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.chose_rent",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "price_up",
+              "weight": 0.3,
+              "title": "两年后房价上涨，首付门槛更高",
+              "delay_years": 2,
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.housing_window_missed",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "chain": {
+                "enqueue_template": "EVT_BUY_HOUSE",
+                "fire_after_years": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EVT_STARTUP_LAUNCH",
+      "title": "要不要把项目做起来",
+      "body": "一个对得上当前风口的小项目，需要你投入启动资金和大量时间。市场真实需求你并不清楚。",
+      "kind": "major_decision",
+      "age_range": [
+        26,
+        50
+      ],
+      "weight": 0.9,
+      "opportunity": true,
+      "once": true,
+      "info_mode": "incomplete",
+      "intel_offers": [
+        {
+          "id": "INTEL_MARKET_RESEARCH",
+          "title": "花一笔钱做市场调研",
+          "fee": 12000,
+          "reveals": [
+            "p_band",
+            "hidden_risk",
+            "outcome_sigma",
+            "industry_outlook"
+          ]
+        }
+      ],
+      "causal_key": "venture.launch",
+      "tags": [
+        "venture",
+        "time",
+        "cashflow"
+      ],
+      "options": [
+        {
+          "id": "found",
+          "text": "辞职创业（个人与经营账户分开）",
+          "cost": {
+            "time": 9,
+            "cash": 80000,
+            "energy": 20
+          },
+          "stakes_class": "venture",
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 80000
+          },
+          "disabled_reason": "启动资金不足",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "pmf",
+              "weight": 0.35,
+              "weight_formula": "clamp(0.25 + 0.2*capability/100 + 0.1*intel_bonus + wind_match, 0.08, 0.7)",
+              "title": "产品找到需求，进入经营回合",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -80000,
+                  "ledger": "F",
+                  "memo": "注入经营账户"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "found",
+                    "reserve_ratio": 0.2
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "track": "founder"
+                  },
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "slow",
+              "weight": 0.4,
+              "title": "订单低于预期，现金储备告急",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -80000,
+                  "ledger": "F",
+                  "memo": "注入经营账户"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "found",
+                    "demand_mult": 0.6
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "track": "founder"
+                  },
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "fail_year1",
+              "weight": 0.25,
+              "title": "第一年没撑过去，清算退出",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -80000,
+                  "ledger": "F"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_shutdown",
+                    "recovery": 0.35
+                  },
+                  "ledger": "I",
+                  "memo": "清算回收"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "side",
+          "text": "先兼职试做，保留本职",
+          "cost": {
+            "time": 4,
+            "cash": 25000,
+            "energy": 12,
+            "health": 3
+          },
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "validate",
+              "weight": 0.5,
+              "title": "验证了需求，明年可放大",
+              "chain": {
+                "enqueue_template": "EVT_STARTUP_LAUNCH",
+                "fire_after_years": 1,
+                "carry_context": {
+                  "validated": true
+                }
+              },
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -25000,
+                  "ledger": "F"
+                }
+              ]
+            },
+            {
+              "id": "exhaust",
+              "weight": 0.5,
+              "title": "两边都吃力，健康与本职考评下滑",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -25000,
+                  "ledger": "F"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "health",
+                  "value": -6,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pass",
+          "text": "不做，把时间和钱留着",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "opportunity_cost_of_pass": "forgo_asymmetric_upside",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "peace",
+              "weight": 0.6,
+              "title": "生活如常",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "放弃创业",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "regret",
+              "weight": 0.4,
+              "title": "后来看到同类项目起来，记下一次错过风口",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.missed_windows",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EVT_RECESSION_LAYOFF",
+      "title": "部门收缩",
+      "body": "宏观已进入衰退，你所在的行业这次伤得比公共服务更重。公司要裁一批人。",
+      "kind": "crisis",
+      "age_range": [
+        22,
+        60
+      ],
+      "weight": 0.6,
+      "opportunity": false,
+      "info_mode": "incomplete",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "cycle_is",
+            "value": "recession"
+          },
+          {
+            "op": "in",
+            "path": "occupation.track",
+            "value": [
+              "employee",
+              "professional",
+              "trade"
+            ]
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_SEVERANCE",
+          "title": "请律师看劳动合同与补偿",
+          "fee": 3000,
+          "reveals": [
+            "hidden_risk",
+            "p_band"
+          ]
+        }
+      ],
+      "causal_key": "career.layoff",
+      "tags": [
+        "career",
+        "crisis",
+        "macro"
+      ],
+      "options": [
+        {
+          "id": "accept_severance",
+          "text": "接受补偿离开",
+          "cost": {
+            "time": 1
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "paid",
+              "weight": 0.8,
+              "title": "拿到补偿，进入求职",
+              "effects": [
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": "severance_formula",
+                  "ledger": "I",
+                  "memo": "经济补偿"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "underpaid",
+              "weight": 0.2,
+              "title": "补偿低于预期",
+              "effects": [
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": "severance_formula*0.5",
+                  "ledger": "I"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fight_to_stay",
+          "text": "争取留下，接受降薪",
+          "cost": {
+            "energy": 8
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "kept",
+              "weight": 0.5,
+              "weight_formula": "0.35 + 0.3*(reputation/100)",
+              "title": "留下，薪酬下调",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "happiness",
+                  "value": -5,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.pay_cut",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "still_cut",
+              "weight": 0.5,
+              "title": "还是被裁，补偿窗口已过",
+              "effects": [
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "EVT_INVEST_WINDOW",
+      "title": "一笔看起来很稳的机会",
+      "body": "熟人介绍一个「几乎稳赚」的渠道，门槛不低。你也可以把钱继续放在存款或指数里。",
+      "kind": "annual_event",
+      "age_range": [
+        22,
+        60
+      ],
+      "weight": 0.8,
+      "opportunity": true,
+      "info_mode": "incomplete",
+      "intel_offers": [
+        {
+          "id": "INTEL_DUE_DILIGENCE",
+          "title": "花钱做尽职调查",
+          "fee": 6000,
+          "reveals": [
+            "hidden_risk",
+            "p_band",
+            "outcome_sigma"
+          ]
+        }
+      ],
+      "causal_key": "invest.window",
+      "tags": [
+        "invest",
+        "risk",
+        "information"
+      ],
+      "options": [
+        {
+          "id": "all_in_product",
+          "text": "把大部分流动资金投进去",
+          "cost": {
+            "cash": 0,
+            "time": 1
+          },
+          "stakes_class": "invest",
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 40000
+          },
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "gain",
+              "weight": 0.4,
+              "title": "赚到了名义收益",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.7
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": "gain_formula",
+                  "ledger": "I"
+                }
+              ]
+            },
+            {
+              "id": "flat",
+              "weight": 0.25,
+              "title": "只是普通收益，还搭上流动性",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.7
+                  },
+                  "ledger": "F"
+                }
+              ]
+            },
+            {
+              "id": "loss",
+              "weight": 0.35,
+              "weight_formula": "0.35 + hidden_risk_boost - intel_discount",
+              "title": "大幅回撤，这不是无风险",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.7,
+                    "immediate_mark": 0.55
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "diversify",
+          "text": "只投入可承受损失的一小部分",
+          "cost": {
+            "time": 1
+          },
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "sized",
+              "weight": 0.7,
+              "title": "仓位受控，无论涨跌都不危及生活",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.15
+                  },
+                  "ledger": "F"
+                }
+              ]
+            },
+            {
+              "id": "sized_loss",
+              "weight": 0.3,
+              "title": "这一小部分亏损了，现金流还在",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.15,
+                    "immediate_mark": 0.55
+                  },
+                  "ledger": "F"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "stay_defensive",
+          "text": "不参与，钱留在存款和货币基金",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "opportunity_cost_of_pass": "forgo_risk_premium",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "safe",
+              "weight": 0.9,
+              "title": "名义收益接近存款，实际收益受通胀侵蚀",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "拒绝高风险机会",
+                  "ledger": "none"
+                }
+              ]
+            },
+            {
+              "id": "fomo",
+              "weight": 0.1,
+              "title": "事后看到别人赚钱，情绪受影响但不改资产",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "happiness",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4871 @@
+{
+  "config_ver": "0.1.0",
+  "templates": [
+    {
+      "id": "EVT_D_OPEN_CITY",
+      "title": "十八岁，先选在哪座城市落脚",
+      "body": "高中毕业了。家乡是开局抽到的城市，你也可以离开。三种城市的工资、房价、生活费和机会多少都不一样。",
+      "kind": "major_decision",
+      "age_range": [
+        18,
+        18
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "stay",
+          "text": "留在家乡",
+          "evaluate_text": "不花搬家费；工资、房价都按家乡城市算。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "settled",
+              "weight": 0.9,
+              "title": "熟门熟路，开销最省",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "留在家乡",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "留下省了搬家钱，也少了一次换赛道的机会。"
+            },
+            {
+              "id": "bored",
+              "weight": 0.1,
+              "title": "日子太熟，有点闷",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.network",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "熟人圈很稳，新机会也少。"
+            }
+          ]
+        },
+        {
+          "id": "go_metro",
+          "text": "去服务型都市闯一闯",
+          "evaluate_text": "搬家约 1.2 万；工资 ×1.20、房价 ×1.35、生活费最高。",
+          "cost": {
+            "cash": 12000
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "landed",
+              "weight": 0.8,
+              "title": "在都市站住了脚",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -12000,
+                  "sub": "relocation",
+                  "memo": "搬家与押金",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.city",
+                  "value": "service_metro",
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.network",
+                  "value": 4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "都市工资高、房价也高，这一步把天花板抬高了。"
+            },
+            {
+              "id": "rough",
+              "weight": 0.2,
+              "title": "头一年租房和找工作都不顺",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -18000,
+                  "sub": "relocation",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.city",
+                  "value": "service_metro",
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "起步多花了钱，但留在了机会最多的地方。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 18000
+          },
+          "disabled_reason": "手头现金不够 1.8 万（含过渡开销）",
+          "visible_if": {
+            "op": "neq",
+            "path": "city",
+            "value": "service_metro"
+          }
+        },
+        {
+          "id": "go_industrial",
+          "text": "去产业新城进厂区或园区",
+          "evaluate_text": "搬家约 6 千；工资 ×0.95，房价 ×0.85，制造和出口为主。",
+          "cost": {
+            "cash": 6000
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "landed",
+              "weight": 0.85,
+              "title": "园区招人，很快上岗",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -6000,
+                  "sub": "relocation",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.city",
+                  "value": "industrial_new",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "繁荣期工资涨得快，衰退时外需冲击也大。"
+            },
+            {
+              "id": "rough",
+              "weight": 0.15,
+              "title": "赶上订单淡季，等了几个月",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -10000,
+                  "sub": "relocation",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.city",
+                  "value": "industrial_new",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "产业新城对周期很敏感。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 10000
+          },
+          "disabled_reason": "手头现金不够 1 万",
+          "visible_if": {
+            "op": "neq",
+            "path": "city",
+            "value": "industrial_new"
+          }
+        },
+        {
+          "id": "go_inland",
+          "text": "去内需腹地，图个稳当",
+          "evaluate_text": "搬家约 4 千；工资 ×0.85、房价 ×0.70，波动小。",
+          "cost": {
+            "cash": 4000
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "landed",
+              "weight": 0.9,
+              "title": "节奏慢，开销低",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -4000,
+                  "sub": "relocation",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.city",
+                  "value": "inland_domestic",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "生活成本最低，机会也最少。"
+            },
+            {
+              "id": "rough",
+              "weight": 0.1,
+              "title": "工作不多，先打零工",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -6000,
+                  "sub": "relocation",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.city",
+                  "value": "inland_domestic",
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": -1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "稳当的地方，跳板也少。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 6000
+          },
+          "disabled_reason": "手头现金不够 6 千",
+          "visible_if": {
+            "op": "neq",
+            "path": "city",
+            "value": "inland_domestic"
+          }
+        }
+      ],
+      "tags": [
+        "slot:open_city",
+        "trigger:fixed",
+        "stage:opening",
+        "subsystem:career",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_open_city",
+      "intel_offers": [
+        {
+          "id": "INTEL_CITY_REPORT",
+          "title": "买一份三城就业与房价报告",
+          "fee": 2000,
+          "fee_formula": "clamp(0.0*stakes, 2000, 2000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 2000,
+            "max": 2000
+          },
+          "reveals": [
+            "industry_outlook"
+          ],
+          "hint_text": "花 2 千，看清三座城市未来几年最缺什么人。",
+          "preview_text": "你会看到：每座城市的主导行业在当前周期里是在扩张还是收缩。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_OPEN_CAREER",
+      "title": "第一份工作",
+      "body": "六条路摆在面前：考编、进企业、走专业执业、做自由职业、学门手艺，或者现在就自己干。选了以后可以换，但换要花时间和钱。",
+      "kind": "major_decision",
+      "age_range": [
+        18,
+        19
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "public",
+          "text": "考编：公务 / 事业单位",
+          "evaluate_text": "录取不确定；上岸后最稳，晋升慢。备考约 3 千。",
+          "cost": {
+            "time": 2
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "pass",
+              "weight": 0.45,
+              "title": "考上了",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "public",
+                    "level": "entry",
+                    "industry": "public",
+                    "track": "public"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "稳定、天花板低，衰退时最不受影响。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "in",
+                    "path": "profile.edu",
+                    "value": [
+                      "edu_academic",
+                      "edu_elite"
+                    ]
+                  },
+                  "mult": 1.5
+                }
+              ]
+            },
+            {
+              "id": "fail",
+              "weight": 0.55,
+              "title": "没考上，先去企业",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -3000,
+                  "sub": "exam_fee",
+                  "ledger": "E"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "备考一年没上岸，转去了企业。"
+            }
+          ]
+        },
+        {
+          "id": "employee",
+          "text": "进企业当雇员",
+          "evaluate_text": "最常见的路；工资中等，行业跟着城市走。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "hired",
+              "weight": 0.85,
+              "title": "入职了",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "中规中矩的起点。"
+            },
+            {
+              "id": "bad_fit",
+              "weight": 0.15,
+              "title": "公司不行，半年后换了一家",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "第一份工作踩了坑，不算大事。"
+            }
+          ]
+        },
+        {
+          "id": "professional",
+          "text": "走专业执业（律师、医生、工程师这类）",
+          "evaluate_text": "需要本科及以上学历；培训约 1.5–2 万；起薪和天花板都高。",
+          "cost": {
+            "cash": 15000,
+            "time": 2
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "qualified",
+              "weight": 0.7,
+              "title": "拿到执业资格",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "professional",
+                    "level": "entry",
+                    "industry": "professional",
+                    "track": "professional"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": -15000,
+                  "sub": "education",
+                  "memo": "资格培训",
+                  "ledger": "E"
+                }
+              ],
+              "review_text": "起薪高、天花板高，前期投入大。"
+            },
+            {
+              "id": "delayed",
+              "weight": 0.3,
+              "title": "资格考试推迟一年，先做助理",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "professional",
+                    "level": "entry",
+                    "industry": "professional",
+                    "track": "professional"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "cash_delta",
+                  "value": -20000,
+                  "sub": "education",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "多读了一年，底子更厚。"
+            }
+          ],
+          "enabled_if": {
+            "op": "and",
+            "conds": [
+              {
+                "op": "in",
+                "path": "profile.edu",
+                "value": [
+                  "edu_academic",
+                  "edu_elite"
+                ]
+              },
+              {
+                "op": "gte",
+                "path": "computed.liquid",
+                "value": 20000
+              }
+            ]
+          },
+          "disabled_reason": "需要本科及以上学历，且现金不少于 2 万"
+        },
+        {
+          "id": "freelance",
+          "text": "做自由职业",
+          "evaluate_text": "收入波动大，没有裁员一说，但淡季会很难。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "clients",
+              "weight": 0.6,
+              "title": "接到了稳定的客户",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "freelance",
+                    "level": "entry",
+                    "industry": "consumer",
+                    "track": "freelance"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "收入不稳，时间自由。"
+            },
+            {
+              "id": "thin",
+              "weight": 0.4,
+              "title": "单子时有时无",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "freelance",
+                    "level": "entry",
+                    "industry": "consumer",
+                    "track": "freelance"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "头几年收入很薄。"
+            }
+          ]
+        },
+        {
+          "id": "trade",
+          "text": "学门手艺，进技能工贸",
+          "evaluate_text": "起薪偏低、稳定性中等；可以兼职接活。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "skilled",
+              "weight": 0.8,
+              "title": "出师了",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "trade",
+                    "level": "entry",
+                    "industry": "manufacturing",
+                    "track": "trade"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "手艺吃饭，跟制造业周期走。"
+            },
+            {
+              "id": "slow",
+              "weight": 0.2,
+              "title": "学徒期比预期长",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "trade",
+                    "level": "entry",
+                    "industry": "manufacturing",
+                    "track": "trade"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "慢一点，底子扎实。"
+            }
+          ]
+        },
+        {
+          "id": "founder",
+          "text": "现在就自己干（小生意）",
+          "evaluate_text": "要拿出 2 万启动；成败一半一半；失败不结束本局。",
+          "cost": {
+            "cash": 20000,
+            "time": 9
+          },
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "open",
+              "weight": 0.5,
+              "title": "小摊开起来了",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "founder",
+                    "level": "entry",
+                    "industry": "consumer",
+                    "track": "founder"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "found",
+                    "amount": 20000,
+                    "industry": "consumer",
+                    "capital": 20000
+                  },
+                  "memo": "个人现金注入经营账",
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "十八岁当老板，账要自己算清楚。"
+            },
+            {
+              "id": "flop",
+              "weight": 0.5,
+              "title": "半年就关了，回去打工",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -12000,
+                  "sub": "venture_loss",
+                  "memo": "启动亏损",
+                  "ledger": "E"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_venture_closed",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "亏了点钱，学到不少。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 20000
+          },
+          "disabled_reason": "启动资金需要 2 万现金"
+        }
+      ],
+      "tags": [
+        "slot:open_career",
+        "trigger:fixed",
+        "stage:opening",
+        "subsystem:career",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_open_career",
+      "intel_offers": [
+        {
+          "id": "INTEL_CAREER_OUTLOOK",
+          "title": "请过来人讲讲各行当的真实收入",
+          "fee": 2000,
+          "fee_formula": "clamp(0.0*stakes, 2000, 2000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 2000,
+            "max": 2000
+          },
+          "reveals": [
+            "p_band",
+            "industry_outlook"
+          ],
+          "hint_text": "花 2 千请几位前辈吃饭，听听真实的起薪和天花板。",
+          "preview_text": "你会看到：每条路「入职成功」的大致把握，以及当前周期下哪些行业在缩招。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_STUDY",
+      "title": "要不要再读一段书",
+      "body": "工作几年，你感觉到了能力上的天花板。全职读研要停薪一年，在职考证要挤时间，或者干脆不读。",
+      "kind": "major_decision",
+      "age_range": [
+        21,
+        26
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "fulltime",
+          "text": "辞职全职读研（停薪一年）",
+          "evaluate_text": "学费加生活约 6 万，并且一年没工资；能力 +6 到 +10。",
+          "cost": {
+            "cash": 60000,
+            "time": 12
+          },
+          "stakes_class": "learn",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "upgrade",
+              "weight": 0.6,
+              "title": "毕业后跳了一级",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -60000,
+                  "sub": "education",
+                  "memo": "学费与生活",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.skip_salary_years",
+                  "value": 1,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 10,
+                  "ledger": "none"
+                },
+                {
+                  "op": "job_level",
+                  "value": 1,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.edu",
+                  "value": "edu_elite",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "一年没收入，换来一级职级。"
+            },
+            {
+              "id": "same",
+              "weight": 0.4,
+              "title": "学历有了，工作没变好",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -60000,
+                  "sub": "education",
+                  "ledger": "E"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.skip_salary_years",
+                  "value": 1,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 6,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "profile.edu",
+                  "value": "edu_elite",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "学历是长期资产，短期没回本。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 100000
+          },
+          "disabled_reason": "需要 6 万学费，并留够一年生活费（共约 10 万）"
+        },
+        {
+          "id": "parttime",
+          "text": "在职考证（每年占 3 格时间）",
+          "evaluate_text": "约 1.5–2 万；不停薪；能力 +4 到 +6，可能伤点身体。",
+          "cost": {
+            "cash": 15000,
+            "time": 3
+          },
+          "stakes_class": "learn",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "passed",
+              "weight": 0.7,
+              "title": "证书拿到了",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -15000,
+                  "sub": "education",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "挤时间换来的能力。"
+            },
+            {
+              "id": "burnout",
+              "weight": 0.3,
+              "title": "考了两次才过，累得不轻",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -20000,
+                  "sub": "education",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 4,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "身体也是成本。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 20000
+          },
+          "disabled_reason": "需要 2 万现金"
+        },
+        {
+          "id": "skip",
+          "text": "不读了，专心工作",
+          "evaluate_text": "不花钱；能力不涨。",
+          "cost": {},
+          "stakes_class": "learn",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false,
+            "opportunity_cost_of_pass": "forgo_capability"
+          },
+          "outcomes": [
+            {
+              "id": "fine",
+              "weight": 0.8,
+              "title": "工作照常",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "不进修",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "省钱省时间。"
+            },
+            {
+              "id": "ceiling",
+              "weight": 0.2,
+              "title": "几年后发现升不上去",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.study_regret",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "能力天花板来得早了点。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:study",
+        "trigger:fixed",
+        "subsystem:career",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_study",
+      "condition": {
+        "op": "neq",
+        "path": "occupation.path",
+        "value": "founder"
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_STUDY_ROI",
+          "title": "查一查这个学位的真实回报",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*tuition, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "tuition",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "p_band",
+            "outcome_sigma"
+          ],
+          "hint_text": "花学费的 2%，买一份往届毕业生的薪资跟踪。",
+          "preview_text": "你会看到：读完后涨薪的大致区间，以及读完找不到更好工作的比例。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_JOB_SWITCH",
+      "title": "猎头来电",
+      "body": "一家别的行业的公司开出更高的名义薪酬。对方行业这几年波动不小，你手头的信息不完整。",
+      "kind": "major_decision",
+      "age_range": [
+        24,
+        50
+      ],
+      "weight": 1,
+      "opportunity": true,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "accept",
+          "text": "接受，转行",
+          "evaluate_text": "可能升一级，也可能停滞或被裁；衰退期更危险。",
+          "cost": {
+            "time": 1
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "fit",
+              "weight": 0.55,
+              "title": "新工作站稳了，涨了一级",
+              "effects": [
+                {
+                  "op": "job_level",
+                  "value": 1,
+                  "ledger": "none"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "industry": "random"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.network",
+                  "value": 3,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "这次跳对了。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "gte",
+                    "path": "attrs.capability",
+                    "value": 65
+                  },
+                  "mult": 1.3
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.6
+                }
+              ]
+            },
+            {
+              "id": "mismatch",
+              "weight": 0.3,
+              "title": "不适应，职级停了两年",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "industry": "random"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.level_pause_years",
+                  "value": 2,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -5,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "名义薪酬高，实际没往上走。"
+            },
+            {
+              "id": "laid_off",
+              "weight": 0.15,
+              "title": "入职第二年就遇上收缩",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "industry": "random"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "layoff",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "新人最先被裁。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "slowdown"
+                  },
+                  "mult": 1.6
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 2.2
+                }
+              ]
+            }
+          ],
+          "decision_tags": [
+            "window"
+          ]
+        },
+        {
+          "id": "negotiate",
+          "text": "拿 offer 跟现公司谈加薪",
+          "evaluate_text": "不换行业；一半可能加薪，一半伤关系。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "raise",
+              "weight": 0.5,
+              "title": "现公司给你涨了一级",
+              "effects": [
+                {
+                  "op": "job_level",
+                  "value": 1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "筹码用对了。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "gte",
+                    "path": "attrs.reputation",
+                    "value": 60
+                  },
+                  "mult": 1.4
+                }
+              ]
+            },
+            {
+              "id": "cold",
+              "weight": 0.5,
+              "title": "老板不接招，关系有点僵",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.reputation",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "谈判有代价。"
+            }
+          ]
+        },
+        {
+          "id": "decline",
+          "text": "婉拒，留在现在的路上",
+          "evaluate_text": "不冒风险；可能错过机会。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false,
+            "opportunity_cost_of_pass": "forgo_higher_wage"
+          },
+          "outcomes": [
+            {
+              "id": "stable",
+              "weight": 0.75,
+              "title": "原岗位平稳",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "拒绝转行",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "稳住了。"
+            },
+            {
+              "id": "missed",
+              "weight": 0.25,
+              "title": "后来那个行业起飞了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.missed_windows",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "错过了一班车。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:job_switch",
+        "trigger:conditional",
+        "subsystem:career",
+        "counts_as_decision",
+        "max_per_life:2"
+      ],
+      "causal_key": "evt_d_job_switch",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "and",
+            "conds": [
+              {
+                "op": "eq",
+                "path": "occupation.jobless",
+                "value": false
+              },
+              {
+                "op": "neq",
+                "path": "occupation.path",
+                "value": null
+              }
+            ]
+          },
+          {
+            "op": "neq",
+            "path": "occupation.path",
+            "value": "founder"
+          },
+          {
+            "op": "neq",
+            "path": "occupation.path",
+            "value": "public"
+          },
+          {
+            "op": "gte",
+            "path": "flags.years_since_switch_offer",
+            "value": 4
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_INDUSTRY_OUTLOOK",
+          "title": "买一份目标行业展望",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*salary_annual, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "salary_annual",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "industry_outlook",
+            "p_band",
+            "hidden_risk"
+          ],
+          "hint_text": "花年薪的 2%，看清对方行业未来两三年的走势。",
+          "preview_text": "你会看到：新岗位站稳的大致把握（概率区间），以及对方行业在下一个衰退里会不会裁员。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_HOUSING",
+      "title": "买房还是继续租",
+      "body": "中介把一套首付够得着的房子摆在面前。买了要背 25 年等额本息的房贷，现金会被锁住；租房能留住现金去投资，但房价可能再涨。",
+      "kind": "major_decision",
+      "age_range": [
+        26,
+        40
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "buy",
+          "text": "首付买下，按揭 25 年",
+          "evaluate_text": "首付按城市 20–30%；年供约为贷款额的 7.8%（利率 6%）；交易税 1%。",
+          "cost": {
+            "time": 1
+          },
+          "stakes_class": "housing",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "closed",
+              "weight": 0.9,
+              "title": "成交",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "housing",
+                    "size": 1
+                  },
+                  "memo": "首付",
+                  "ledger": "F"
+                },
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "mortgage",
+                    "ltv": "city_max",
+                    "term_years": 25
+                  },
+                  "memo": "按揭放款",
+                  "ledger": "F"
+                },
+                {
+                  "op": "tax_event",
+                  "value": "transaction_tax_housing",
+                  "ledger": "T"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.has_house",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "买下了，接下来 25 年每年都要还房贷。"
+            },
+            {
+              "id": "fail_close",
+              "weight": 0.1,
+              "title": "批贷没过，损失了评估和中介费",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -6000,
+                  "sub": "closing_cost_sunk",
+                  "ledger": "E"
+                }
+              ],
+              "review_text": "交易没成，沉没成本 6 千。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value_path": "computed.min_down_payment"
+          },
+          "disabled_reason": "流动资金不够付首付加税费",
+          "decision_tags": [
+            "window"
+          ]
+        },
+        {
+          "id": "buy_small",
+          "text": "买套小的，总价六成",
+          "evaluate_text": "总价约六成；年供轻；以后想换大房还要再折腾。",
+          "cost": {
+            "time": 1
+          },
+          "stakes_class": "housing",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "closed",
+              "weight": 0.9,
+              "title": "成交",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "housing",
+                    "size": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "mortgage",
+                    "ltv": "city_max",
+                    "term_years": 25
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "tax_event",
+                  "value": "transaction_tax_housing",
+                  "ledger": "T"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.has_house",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "压力小一些，空间也小。"
+            },
+            {
+              "id": "fail_close",
+              "weight": 0.1,
+              "title": "批贷没过",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -4000,
+                  "sub": "closing_cost_sunk",
+                  "ledger": "E"
+                }
+              ],
+              "review_text": "沉没成本 4 千。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value_path": "computed.min_down_payment_small"
+          },
+          "disabled_reason": "流动资金不够付小户型首付"
+        },
+        {
+          "id": "rent",
+          "text": "继续租，把首付拿去投资",
+          "evaluate_text": "不背债；房租按生活费算；可能错过上涨。",
+          "cost": {},
+          "stakes_class": "housing",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false,
+            "opportunity_cost_of_pass": "possible_price_up"
+          },
+          "outcomes": [
+            {
+              "id": "rent_ok",
+              "weight": 0.7,
+              "title": "继续租，现金留在手里",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.chose_rent",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "流动性还在。"
+            },
+            {
+              "id": "price_up",
+              "weight": 0.3,
+              "title": "两年后房价涨了一截",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.chose_rent",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.missed_windows",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "租房的代价是错过这一波房价。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.6
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.4
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:housing",
+        "trigger:fixed",
+        "subsystem:assets",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_housing",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "flags.has_house",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "path": "flags.no_new_debt",
+            "value": false
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_HOUSING_CYCLE",
+          "title": "请人做区域与利率情景分析",
+          "fee": 4000,
+          "fee_formula": "clamp(0.02*housing_price, 4000, 20000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "housing_price",
+            "min": 4000,
+            "max": 20000
+          },
+          "reveals": [
+            "industry_outlook",
+            "debt_roll_risk",
+            "p_band"
+          ],
+          "hint_text": "花房价的 2%（4 千到 2 万），看看未来几年这片的房价和利率。",
+          "preview_text": "你会看到：未来 3 年房价涨跌的大致区间、利率可能怎么走，以及按你的收入，年供占收入比例是否危险（超过 50% 标红）。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_INVEST_1",
+      "title": "重新配置一下手上的钱",
+      "body": "年底了，你看了看账户：存款、货币基金、指数基金、行业基金。要不要调整？没有稳赚不赔的配置，收益越高，回撤也越深。",
+      "kind": "major_decision",
+      "age_range": [
+        25,
+        27
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "defensive",
+          "text": "保守：全部放存款和货币基金",
+          "evaluate_text": "年化约 1.5–2%，几乎不回撤；卖出基金有 5% 折价。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "safe",
+              "weight": 0.85,
+              "title": "稳稳的，跑不赢通胀也不怕跌",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "现金流最安全。"
+            },
+            {
+              "id": "regret",
+              "weight": 0.15,
+              "title": "第二年市场大涨，有点后悔",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "保守也有机会成本。"
+            }
+          ],
+          "decision_tags": [
+            "defensive"
+          ]
+        },
+        {
+          "id": "balanced",
+          "text": "均衡：一半放指数，留够一年生活费",
+          "evaluate_text": "指数年化约 7%，单年可能跌 15% 以上；保留 12 个月生活费。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "done",
+              "weight": 0.9,
+              "title": "配好了",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "长期赚风险溢价，短期会有回撤。"
+            },
+            {
+              "id": "bad_timing",
+              "weight": 0.1,
+              "title": "刚买就赶上下跌",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12,
+                    "immediate_mark": 0.9
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "择时很难，长期看仓位。"
+            }
+          ],
+          "decision_tags": [
+            "index"
+          ]
+        },
+        {
+          "id": "aggressive",
+          "text": "进取：大部分放进一个热门行业基金",
+          "evaluate_text": "行业基金年化约 8.5%、波动 24%；八成现金放进去，现金跑道会变短。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "boom",
+              "weight": 0.4,
+              "title": "热门行业继续涨",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 1.15
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "方向对了，但仓位很重。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.4
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.5
+                }
+              ]
+            },
+            {
+              "id": "bust",
+              "weight": 0.35,
+              "title": "热门变冷门，账面腰斩",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "集中持仓的风险兑现了。"
+            },
+            {
+              "id": "flat",
+              "weight": 0.25,
+              "title": "不温不火，还占着流动性",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "收益平平。"
+            }
+          ],
+          "decision_tags": [
+            "window",
+            "sector"
+          ]
+        },
+        {
+          "id": "keep",
+          "text": "不动，维持现状",
+          "evaluate_text": "不产生交易成本。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "same",
+              "weight": 0.9,
+              "title": "维持现状",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "不调整",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不折腾也是一种选择。"
+            },
+            {
+              "id": "drift",
+              "weight": 0.1,
+              "title": "仓位漂移得有点离谱",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.cognition",
+                  "value": -1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "久不检视，风险会悄悄变大。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:invest_1",
+        "trigger:fixed",
+        "subsystem:assets",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_invest_1",
+      "intel_offers": [
+        {
+          "id": "INTEL_MARKET_1",
+          "title": "买一份市场与周期研判",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*investable, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "investable",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "industry_outlook",
+            "outcome_sigma"
+          ],
+          "hint_text": "花可投资金额的 2%，听听专业的周期判断。",
+          "preview_text": "你会看到：当前周期大概还会持续多久、指数下一年的收益区间（不保证），以及哪个行业被高估。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_INVEST_2",
+      "title": "重新配置一下手上的钱",
+      "body": "年底了，你看了看账户：存款、货币基金、指数基金、行业基金。要不要调整？没有稳赚不赔的配置，收益越高，回撤也越深。",
+      "kind": "major_decision",
+      "age_range": [
+        32,
+        35
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "defensive",
+          "text": "保守：全部放存款和货币基金",
+          "evaluate_text": "年化约 1.5–2%，几乎不回撤；卖出基金有 5% 折价。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "safe",
+              "weight": 0.85,
+              "title": "稳稳的，跑不赢通胀也不怕跌",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "现金流最安全。"
+            },
+            {
+              "id": "regret",
+              "weight": 0.15,
+              "title": "第二年市场大涨，有点后悔",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "保守也有机会成本。"
+            }
+          ],
+          "decision_tags": [
+            "defensive"
+          ]
+        },
+        {
+          "id": "balanced",
+          "text": "均衡：一半放指数，留够一年生活费",
+          "evaluate_text": "指数年化约 7%，单年可能跌 15% 以上；保留 12 个月生活费。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "done",
+              "weight": 0.9,
+              "title": "配好了",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "长期赚风险溢价，短期会有回撤。"
+            },
+            {
+              "id": "bad_timing",
+              "weight": 0.1,
+              "title": "刚买就赶上下跌",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12,
+                    "immediate_mark": 0.9
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "择时很难，长期看仓位。"
+            }
+          ],
+          "decision_tags": [
+            "index"
+          ]
+        },
+        {
+          "id": "aggressive",
+          "text": "进取：大部分放进一个热门行业基金",
+          "evaluate_text": "行业基金年化约 8.5%、波动 24%；八成现金放进去，现金跑道会变短。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "boom",
+              "weight": 0.4,
+              "title": "热门行业继续涨",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 1.15
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "方向对了，但仓位很重。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.4
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.5
+                }
+              ]
+            },
+            {
+              "id": "bust",
+              "weight": 0.35,
+              "title": "热门变冷门，账面腰斩",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "集中持仓的风险兑现了。"
+            },
+            {
+              "id": "flat",
+              "weight": 0.25,
+              "title": "不温不火，还占着流动性",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "收益平平。"
+            }
+          ],
+          "decision_tags": [
+            "window",
+            "sector"
+          ]
+        },
+        {
+          "id": "keep",
+          "text": "不动，维持现状",
+          "evaluate_text": "不产生交易成本。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "same",
+              "weight": 0.9,
+              "title": "维持现状",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "不调整",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不折腾也是一种选择。"
+            },
+            {
+              "id": "drift",
+              "weight": 0.1,
+              "title": "仓位漂移得有点离谱",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.cognition",
+                  "value": -1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "久不检视，风险会悄悄变大。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:invest_2",
+        "trigger:fixed",
+        "subsystem:assets",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_invest_2",
+      "intel_offers": [
+        {
+          "id": "INTEL_MARKET_2",
+          "title": "买一份市场与周期研判",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*investable, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "investable",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "industry_outlook",
+            "outcome_sigma"
+          ],
+          "hint_text": "花可投资金额的 2%，听听专业的周期判断。",
+          "preview_text": "你会看到：当前周期大概还会持续多久、指数下一年的收益区间（不保证），以及哪个行业被高估。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_INVEST_3",
+      "title": "重新配置一下手上的钱",
+      "body": "年底了，你看了看账户：存款、货币基金、指数基金、行业基金。要不要调整？没有稳赚不赔的配置，收益越高，回撤也越深。",
+      "kind": "major_decision",
+      "age_range": [
+        41,
+        44
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "defensive",
+          "text": "保守：全部放存款和货币基金",
+          "evaluate_text": "年化约 1.5–2%，几乎不回撤；卖出基金有 5% 折价。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "safe",
+              "weight": 0.85,
+              "title": "稳稳的，跑不赢通胀也不怕跌",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "现金流最安全。"
+            },
+            {
+              "id": "regret",
+              "weight": 0.15,
+              "title": "第二年市场大涨，有点后悔",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "保守也有机会成本。"
+            }
+          ],
+          "decision_tags": [
+            "defensive"
+          ]
+        },
+        {
+          "id": "balanced",
+          "text": "均衡：一半放指数，留够一年生活费",
+          "evaluate_text": "指数年化约 7%，单年可能跌 15% 以上；保留 12 个月生活费。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "done",
+              "weight": 0.9,
+              "title": "配好了",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "长期赚风险溢价，短期会有回撤。"
+            },
+            {
+              "id": "bad_timing",
+              "weight": 0.1,
+              "title": "刚买就赶上下跌",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12,
+                    "immediate_mark": 0.9
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "择时很难，长期看仓位。"
+            }
+          ],
+          "decision_tags": [
+            "index"
+          ]
+        },
+        {
+          "id": "aggressive",
+          "text": "进取：大部分放进一个热门行业基金",
+          "evaluate_text": "行业基金年化约 8.5%、波动 24%；八成现金放进去，现金跑道会变短。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "boom",
+              "weight": 0.4,
+              "title": "热门行业继续涨",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 1.15
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "方向对了，但仓位很重。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.4
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.5
+                }
+              ]
+            },
+            {
+              "id": "bust",
+              "weight": 0.35,
+              "title": "热门变冷门，账面腰斩",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "集中持仓的风险兑现了。"
+            },
+            {
+              "id": "flat",
+              "weight": 0.25,
+              "title": "不温不火，还占着流动性",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "收益平平。"
+            }
+          ],
+          "decision_tags": [
+            "window",
+            "sector"
+          ]
+        },
+        {
+          "id": "keep",
+          "text": "不动，维持现状",
+          "evaluate_text": "不产生交易成本。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "same",
+              "weight": 0.9,
+              "title": "维持现状",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "不调整",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不折腾也是一种选择。"
+            },
+            {
+              "id": "drift",
+              "weight": 0.1,
+              "title": "仓位漂移得有点离谱",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.cognition",
+                  "value": -1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "久不检视，风险会悄悄变大。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:invest_3",
+        "trigger:fixed",
+        "subsystem:assets",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_invest_3",
+      "intel_offers": [
+        {
+          "id": "INTEL_MARKET_3",
+          "title": "买一份市场与周期研判",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*investable, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "investable",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "industry_outlook",
+            "outcome_sigma"
+          ],
+          "hint_text": "花可投资金额的 2%，听听专业的周期判断。",
+          "preview_text": "你会看到：当前周期大概还会持续多久、指数下一年的收益区间（不保证），以及哪个行业被高估。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_INVEST_4",
+      "title": "重新配置一下手上的钱",
+      "body": "年底了，你看了看账户：存款、货币基金、指数基金、行业基金。要不要调整？没有稳赚不赔的配置，收益越高，回撤也越深。",
+      "kind": "major_decision",
+      "age_range": [
+        51,
+        54
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "defensive",
+          "text": "保守：全部放存款和货币基金",
+          "evaluate_text": "年化约 1.5–2%，几乎不回撤；卖出基金有 5% 折价。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "safe",
+              "weight": 0.85,
+              "title": "稳稳的，跑不赢通胀也不怕跌",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "现金流最安全。"
+            },
+            {
+              "id": "regret",
+              "weight": 0.15,
+              "title": "第二年市场大涨，有点后悔",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "保守也有机会成本。"
+            }
+          ],
+          "decision_tags": [
+            "defensive"
+          ]
+        },
+        {
+          "id": "balanced",
+          "text": "均衡：一半放指数，留够一年生活费",
+          "evaluate_text": "指数年化约 7%，单年可能跌 15% 以上；保留 12 个月生活费。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "done",
+              "weight": 0.9,
+              "title": "配好了",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "长期赚风险溢价，短期会有回撤。"
+            },
+            {
+              "id": "bad_timing",
+              "weight": 0.1,
+              "title": "刚买就赶上下跌",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction_of_liquid": 0.5,
+                    "keep_runway_months": 12,
+                    "immediate_mark": 0.9
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "择时很难，长期看仓位。"
+            }
+          ],
+          "decision_tags": [
+            "index"
+          ]
+        },
+        {
+          "id": "aggressive",
+          "text": "进取：大部分放进一个热门行业基金",
+          "evaluate_text": "行业基金年化约 8.5%、波动 24%；八成现金放进去，现金跑道会变短。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "boom",
+              "weight": 0.4,
+              "title": "热门行业继续涨",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 1.15
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "方向对了，但仓位很重。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.4
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.5
+                }
+              ]
+            },
+            {
+              "id": "bust",
+              "weight": 0.35,
+              "title": "热门变冷门，账面腰斩",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8,
+                    "immediate_mark": 0.6
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "集中持仓的风险兑现了。"
+            },
+            {
+              "id": "flat",
+              "weight": 0.25,
+              "title": "不温不火，还占着流动性",
+              "effects": [
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction_of_liquid": 0.8
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "收益平平。"
+            }
+          ],
+          "decision_tags": [
+            "window",
+            "sector"
+          ]
+        },
+        {
+          "id": "keep",
+          "text": "不动，维持现状",
+          "evaluate_text": "不产生交易成本。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "same",
+              "weight": 0.9,
+              "title": "维持现状",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "不调整",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不折腾也是一种选择。"
+            },
+            {
+              "id": "drift",
+              "weight": 0.1,
+              "title": "仓位漂移得有点离谱",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.cognition",
+                  "value": -1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "久不检视，风险会悄悄变大。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:invest_4",
+        "trigger:fixed",
+        "subsystem:assets",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_invest_4",
+      "intel_offers": [
+        {
+          "id": "INTEL_MARKET_4",
+          "title": "买一份市场与周期研判",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*investable, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "investable",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "industry_outlook",
+            "outcome_sigma"
+          ],
+          "hint_text": "花可投资金额的 2%，听听专业的周期判断。",
+          "preview_text": "你会看到：当前周期大概还会持续多久、指数下一年的收益区间（不保证），以及哪个行业被高估。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_STARTUP",
+      "title": "要不要把项目做起来",
+      "body": "一个对得上当前风口的小项目在找人。需要拿出启动资金，并投入大量时间。市场的真实需求你并不清楚。",
+      "kind": "major_decision",
+      "age_range": [
+        26,
+        45
+      ],
+      "weight": 1,
+      "opportunity": true,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "found",
+          "text": "辞职全职创业（投 8 万，企业账与个人账分开）",
+          "evaluate_text": "启动资金 8 万转入经营账；时间占 9 格，不能再有本职工作；约三成五把握找到需求。",
+          "cost": {
+            "cash": 80000,
+            "time": 9,
+            "energy": 20
+          },
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "pmf",
+              "weight": 0.35,
+              "title": "产品找到了需求",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "found",
+                    "amount": 80000,
+                    "demand_mult": 1.2,
+                    "capital": 80000
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "founder",
+                    "level": "entry",
+                    "industry": "venture",
+                    "track": "founder"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "进入经营回合：每年定价、招人、留现金储备。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "gte",
+                    "path": "attrs.capability",
+                    "value": 65
+                  },
+                  "mult": 1.4
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.3
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.6
+                }
+              ]
+            },
+            {
+              "id": "slow",
+              "weight": 0.4,
+              "title": "订单低于预期",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "found",
+                    "amount": 80000,
+                    "demand_mult": 0.7,
+                    "capital": 80000
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "founder",
+                    "level": "entry",
+                    "industry": "venture",
+                    "track": "founder"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "现金储备会很快告急，要早做打算。"
+            },
+            {
+              "id": "fail",
+              "weight": 0.25,
+              "title": "第一年没撑住，清算退出",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "found",
+                    "amount": 80000,
+                    "demand_mult": 0.5,
+                    "capital": 80000
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_shutdown"
+                  },
+                  "ledger": "I"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "亏掉六成多启动资金，回去上班。本局继续。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 80000
+          },
+          "disabled_reason": "需要 8 万流动资金",
+          "decision_tags": [
+            "window",
+            "venture"
+          ]
+        },
+        {
+          "id": "side",
+          "text": "先兼职试做（投 2.5 万，保留本职）",
+          "evaluate_text": "投 2.5 万；时间占 4 格（本职 8 + 4 = 12，已满，会轻度过劳）。",
+          "cost": {
+            "cash": 25000,
+            "time": 4,
+            "energy": 12
+          },
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "validate",
+              "weight": 0.5,
+              "title": "验证了需求，转成正式项目",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "found",
+                    "amount": 25000,
+                    "demand_mult": 0.8,
+                    "side": true,
+                    "capital": 25000
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "稳一点的启动方式。"
+            },
+            {
+              "id": "exhaust",
+              "weight": 0.5,
+              "title": "两头吃力，最后放弃了",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -25000,
+                  "sub": "venture_loss",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -5,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_venture_closed",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "钱和身体都交了学费。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 25000
+          },
+          "disabled_reason": "需要 2.5 万流动资金",
+          "decision_tags": [
+            "venture"
+          ]
+        },
+        {
+          "id": "pass",
+          "text": "不做，把时间和钱留着",
+          "evaluate_text": "不花钱；可能错过非对称的上行机会。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false,
+            "opportunity_cost_of_pass": "forgo_asymmetric_upside"
+          },
+          "outcomes": [
+            {
+              "id": "peace",
+              "weight": 0.6,
+              "title": "生活如常",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "放弃创业",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不冒险。"
+            },
+            {
+              "id": "regret",
+              "weight": 0.4,
+              "title": "后来同类项目做起来了",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "flags.missed_windows",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "错过一次风口。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:startup",
+        "trigger:conditional",
+        "subsystem:venture",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_startup",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "venture.active",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "path": "flags.no_new_debt",
+            "value": false
+          },
+          {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 25000
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_MARKET_RESEARCH",
+          "title": "花钱做市场调研",
+          "fee": 2000,
+          "fee_formula": "clamp(0.1*startup_capital, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.1,
+            "stakes": "startup_capital",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "p_band",
+            "hidden_risk",
+            "outcome_sigma",
+            "industry_outlook"
+          ],
+          "hint_text": "花启动资金的一成做调研。",
+          "preview_text": "你会看到：项目找到需求的大致把握（概率区间）、最大的一条隐藏风险，以及第一年最坏能亏多少。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_VENTURE_REVIEW",
+      "title": "公司走到一个岔口",
+      "body": "公司运转了几年。有人想收购，也可以再投一笔钱扩张，或者体面地关掉。",
+      "kind": "major_decision",
+      "age_range": [
+        20,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "expand",
+          "text": "再投 5 万扩张（个人现金进经营账）",
+          "evaluate_text": "个人现金 5 万转入企业；可能放大利润，也可能只放大成本。",
+          "cost": {
+            "cash": 50000
+          },
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "grow",
+              "weight": 0.5,
+              "title": "扩张成功，需求上了一个台阶",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "invest",
+                    "amount": 50000,
+                    "demand_mult": 1.35
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.window_hits",
+                  "value": "+1",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "规模更大，风险也更大。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "boom"
+                  },
+                  "mult": 1.3
+                },
+                {
+                  "if": {
+                    "op": "cycle_is",
+                    "value": "recession"
+                  },
+                  "mult": 0.6
+                }
+              ]
+            },
+            {
+              "id": "stall",
+              "weight": 0.5,
+              "title": "扩张没带来增长，成本压身",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "invest",
+                    "amount": 50000,
+                    "demand_mult": 0.95
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "钱花了，效果不明显。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 50000
+          },
+          "disabled_reason": "需要 5 万流动资金",
+          "decision_tags": [
+            "window",
+            "venture"
+          ]
+        },
+        {
+          "id": "sell",
+          "text": "接受收购，卖掉公司",
+          "evaluate_text": "按年利润 4–7 倍加企业现金成交，所得记个人收入；之后回到雇员路径。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "good_price",
+              "weight": 0.6,
+              "title": "卖了个好价钱",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_sale",
+                    "multiple": 7
+                  },
+                  "ledger": "I"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "senior",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "落袋为安，回去做高管。"
+            },
+            {
+              "id": "low_price",
+              "weight": 0.4,
+              "title": "买方压价，勉强成交",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_sale",
+                    "multiple": 4
+                  },
+                  "ledger": "I"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "mid",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "价钱一般，但退出了。"
+            }
+          ],
+          "decision_tags": [
+            "exit"
+          ]
+        },
+        {
+          "id": "hold",
+          "text": "维持现状，继续经营",
+          "evaluate_text": "不动用个人现金。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "steady",
+              "weight": 0.7,
+              "title": "照常经营",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "维持",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "稳住。"
+            },
+            {
+              "id": "squeeze",
+              "weight": 0.3,
+              "title": "竞争变激烈，利润被压薄",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "boost_demand",
+                    "demand_mult": 0.85,
+                    "mult": 0.85
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不进则退。"
+            }
+          ]
+        },
+        {
+          "id": "shutdown",
+          "text": "关停清算",
+          "evaluate_text": "按经营资产的 35% 回收（不顺利时 20%）。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "clean",
+              "weight": 0.7,
+              "title": "体面收尾",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_shutdown"
+                  },
+                  "ledger": "I"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "收回部分资金，回去上班。"
+            },
+            {
+              "id": "messy",
+              "weight": 0.3,
+              "title": "清算拖了一年",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_shutdown",
+                    "recovery": 0.2
+                  },
+                  "ledger": "I"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "收尾比想象的难。"
+            }
+          ],
+          "decision_tags": [
+            "exit"
+          ]
+        }
+      ],
+      "tags": [
+        "slot:venture_review",
+        "trigger:recurring",
+        "subsystem:venture",
+        "counts_as_decision",
+        "max_per_life:3"
+      ],
+      "causal_key": "evt_d_venture_review",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "venture.active",
+            "value": true
+          },
+          {
+            "op": "gte",
+            "path": "flags.venture_years",
+            "value": 3
+          },
+          {
+            "op": "gte",
+            "path": "flags.years_since_venture_review",
+            "value": 4
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_VALUATION",
+          "title": "请人做一次估值和尽调",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*venture_value, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "venture_value",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "p_band",
+            "hidden_risk",
+            "outcome_sigma"
+          ],
+          "hint_text": "花企业估值的 2%，看清公司值多少、扩张能不能成。",
+          "preview_text": "你会看到：收购报价是否合理（按利润的 4–10 倍）、扩张成功的大致把握，以及现金储备还能撑几个月。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_VENTURE_CRISIS",
+      "title": "公司账上快没钱了",
+      "body": "企业现金储备已经是负数。员工工资和供应商货款都在等。",
+      "kind": "crisis",
+      "age_range": [
+        19,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "inject",
+          "text": "拿个人积蓄输血",
+          "evaluate_text": "把亏空加 6 个月成本从个人现金转进去（不超过个人流动资金）；可能扭亏，也可能继续亏。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "turn",
+              "weight": 0.45,
+              "title": "撑过去了，第二年扭亏",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "invest",
+                    "amount": "cover_deficit_plus_6m",
+                    "demand_mult": 1.15
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "这次撑对了。"
+            },
+            {
+              "id": "drain",
+              "weight": 0.55,
+              "title": "钱填进去，窟窿还在",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "invest",
+                    "amount": "cover_deficit_plus_6m",
+                    "demand_mult": 0.85
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "沉没成本越来越大。"
+            }
+          ]
+        },
+        {
+          "id": "cut",
+          "text": "裁员降本，收缩求生",
+          "evaluate_text": "不花个人的钱；可能稳住，也可能越缩越小。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "survive",
+              "weight": 0.6,
+              "title": "规模小了，活下来了",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "fire",
+                    "headcount": -1,
+                    "n": 1
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.reputation",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "活下来最重要。"
+            },
+            {
+              "id": "spiral",
+              "weight": 0.4,
+              "title": "收缩后订单也跟着掉",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "fire",
+                    "headcount": -1,
+                    "n": 1
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "boost_demand",
+                    "demand_mult": 0.75,
+                    "mult": 0.75
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "收缩有时会自我强化。"
+            }
+          ]
+        },
+        {
+          "id": "shutdown",
+          "text": "认赔关停",
+          "evaluate_text": "按 35% 回收经营资产；如果有个人担保，剩余企业债转为个人负债。",
+          "cost": {},
+          "stakes_class": "venture",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "close",
+              "weight": 0.8,
+              "title": "关掉了，回去上班",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_shutdown"
+                  },
+                  "ledger": "I"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "止损也是本事。"
+            },
+            {
+              "id": "guarantee",
+              "weight": 0.2,
+              "title": "个人担保的债要自己还",
+              "effects": [
+                {
+                  "op": "venture_action",
+                  "value": {
+                    "action": "exit_shutdown",
+                    "recovery": 0.2,
+                    "guarantee_to_personal": true
+                  },
+                  "ledger": "I"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "employee",
+                    "level": "entry",
+                    "industry": "city_bias",
+                    "track": "employee"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.had_crisis",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "企业债转到了个人身上。"
+            }
+          ],
+          "decision_tags": [
+            "exit"
+          ]
+        }
+      ],
+      "tags": [
+        "slot:venture_crisis",
+        "trigger:conditional",
+        "subsystem:venture",
+        "counts_as_decision",
+        "max_per_life:3"
+      ],
+      "causal_key": "evt_d_venture_crisis",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "venture.active",
+            "value": true
+          },
+          {
+            "op": "lt",
+            "path": "venture.cash_reserve",
+            "value": 0
+          }
+        ]
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_TURNAROUND",
+          "title": "请顾问诊断能不能救",
+          "fee": 2000,
+          "fee_formula": "clamp(0.02*venture_value, 2000, 25000)",
+          "fee_rule": {
+            "rate": 0.02,
+            "stakes": "venture_value",
+            "min": 2000,
+            "max": 25000
+          },
+          "reveals": [
+            "p_band",
+            "hidden_risk"
+          ],
+          "hint_text": "花企业估值的 2% 请人看账。",
+          "preview_text": "你会看到：裁员降本后扭亏的大致把握，以及继续输血最多会亏多少。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_LIQUIDITY",
+      "title": "现金不够付今年的账了",
+      "body": "生活费、房贷和税加起来，超过了你手上的现金和能变现的基金。得想办法。",
+      "kind": "crisis",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "borrow",
+          "text": "借一笔消费贷周转（年利率约为基准利率 + 6%）",
+          "evaluate_text": "借入缺口加 3 个月生活费，3 年还清；利息记入债务支出。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "bridge",
+              "weight": 0.6,
+              "title": "撑过了今年",
+              "effects": [
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "consumer",
+                    "principal": "living * 0.75",
+                    "term_years": 3,
+                    "rate_spread": 0.06,
+                    "principal_rule": "shortfall_plus_3m"
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "用未来的钱解今天的急。"
+            },
+            {
+              "id": "roll",
+              "weight": 0.4,
+              "title": "明年还要再借",
+              "effects": [
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "consumer",
+                    "principal": "living * 0.75",
+                    "term_years": 3,
+                    "rate_spread": 0.06,
+                    "principal_rule": "shortfall_plus_3m"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.debt_roll",
+                  "value": true,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "债务开始滚动了。"
+            }
+          ],
+          "enabled_if": {
+            "op": "eq",
+            "path": "flags.no_new_debt",
+            "value": false
+          },
+          "disabled_reason": "重组后 3 年内不能借新债"
+        },
+        {
+          "id": "sell_assets",
+          "text": "卖掉投资（基金 5% 折价，房产 8%）",
+          "evaluate_text": "按折价变现，必要时卖房（卖房会提前还清房贷）。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "sold",
+              "weight": 0.85,
+              "title": "卖了资产补上缺口",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "auto_shortfall",
+                    "include_housing": true
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "流动性换回来了，长期收益也少了。"
+            },
+            {
+              "id": "bottom",
+              "weight": 0.15,
+              "title": "卖在了低点",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "auto_shortfall",
+                    "include_housing": true,
+                    "extra_haircut": 0.1
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "急卖往往卖在低点。"
+            }
+          ]
+        },
+        {
+          "id": "frugal",
+          "text": "压缩开销，过几年紧日子",
+          "evaluate_text": "生活费降到 75%；仍需借入当年缺口（利率较低）。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "tight",
+              "weight": 0.7,
+              "title": "改成节俭生活，慢慢缓过来",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "profile.lifestyle",
+                  "value": "frugal",
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -5,
+                  "ledger": "none"
+                },
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "consumer",
+                    "principal": "living * 0.5",
+                    "term_years": 2,
+                    "rate_spread": 0.04,
+                    "principal_rule": "shortfall"
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "开销降了，幸福感也降了。"
+            },
+            {
+              "id": "strain",
+              "weight": 0.3,
+              "title": "家里因为钱吵了几次",
+              "effects": [
+                {
+                  "op": "flag_set",
+                  "path": "profile.lifestyle",
+                  "value": "frugal",
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": -6,
+                  "ledger": "none"
+                },
+                {
+                  "op": "loan_open",
+                  "value": {
+                    "kind": "consumer",
+                    "principal": "living * 0.5",
+                    "term_years": 2,
+                    "rate_spread": 0.04,
+                    "principal_rule": "shortfall"
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "钱的压力会传到家里。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:liquidity",
+        "trigger:conditional",
+        "subsystem:assets",
+        "counts_as_decision",
+        "max_per_life:3"
+      ],
+      "causal_key": "evt_d_liquidity",
+      "condition": {
+        "op": "eq",
+        "path": "flags.liquidity_crunch_this_year",
+        "value": true
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_DEBT_ADVICE",
+          "title": "请理财顾问做一份债务方案",
+          "fee": 2000,
+          "fee_formula": "clamp(0.0*stakes, 2000, 2000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 2000,
+            "max": 2000
+          },
+          "reveals": [
+            "debt_roll_risk",
+            "p_band"
+          ],
+          "hint_text": "花 2 千，算清楚借钱和卖资产哪个代价小。",
+          "preview_text": "你会看到：借消费贷后三年的还款压力，以及按现在的收入多久会滚成正式破产。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_RESTRUCTURE",
+      "title": "债务重组",
+      "body": "连续两年还不上债，或者负债已经超过可变现资产加年收入的两倍。你进入了正式破产程序：这不是结局，是重来的起点。",
+      "kind": "crisis",
+      "age_range": [
+        18,
+        64
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": false,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "accept",
+          "text": "接受标准重组（债务打 5 折）",
+          "evaluate_text": "债务按 4–6 折重组；保留至少 1.2 万或 3 个月节俭生活费的现金；唯一住房暂缓拍卖。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "approved",
+              "weight": 0.8,
+              "title": "重组批了，保住最低生活现金",
+              "effects": [
+                {
+                  "op": "loan_repay",
+                  "value": {
+                    "kind": "restructure",
+                    "haircut": 0.5
+                  },
+                  "ledger": "D"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.no_new_debt_years",
+                  "value": 3,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.reputation",
+                  "value": -8,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -8,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "三年内不能借新债，职业收入保留。"
+            },
+            {
+              "id": "strict",
+              "weight": 0.2,
+              "title": "法官从严，只减 4 成",
+              "effects": [
+                {
+                  "op": "loan_repay",
+                  "value": {
+                    "kind": "restructure",
+                    "haircut": 0.6
+                  },
+                  "ledger": "D"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.no_new_debt_years",
+                  "value": 3,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.reputation",
+                  "value": -10,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -10,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "更难，但还能重来。"
+            }
+          ]
+        },
+        {
+          "id": "sell_house",
+          "text": "主动卖房还债，换更大折扣",
+          "evaluate_text": "只在有房时可选；卖房还清房贷，剩余债务打 4 折左右。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "cleaner",
+              "weight": 0.7,
+              "title": "卖房后剩余债务减了 6 成",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "housing",
+                    "fraction": 1
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "loan_repay",
+                  "value": {
+                    "kind": "restructure",
+                    "haircut": 0.4
+                  },
+                  "ledger": "D"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.no_new_debt_years",
+                  "value": 3,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": -6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "没了房子，也没了大部分债。"
+            },
+            {
+              "id": "low_bid",
+              "weight": 0.3,
+              "title": "房子卖得便宜",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "housing",
+                    "fraction": 1,
+                    "extra_haircut": 0.1
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "loan_repay",
+                  "value": {
+                    "kind": "restructure",
+                    "haircut": 0.45
+                  },
+                  "ledger": "D"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.no_new_debt_years",
+                  "value": 3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "急卖打了折。"
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.has_house",
+            "value": true
+          }
+        },
+        {
+          "id": "fight",
+          "text": "向亲友求助，尽量少打折扣",
+          "evaluate_text": "看家底；出身越好越可能有人帮。",
+          "cost": {},
+          "stakes_class": "risk",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "helped",
+              "weight": 0.4,
+              "title": "家里帮你还了一部分",
+              "effects": [
+                {
+                  "op": "loan_repay",
+                  "value": {
+                    "kind": "restructure",
+                    "haircut": 0.6
+                  },
+                  "ledger": "D"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": -4,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.no_new_debt_years",
+                  "value": 2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "信用伤得轻一点，人情欠下了。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "eq",
+                    "path": "origin",
+                    "value": "wealthy"
+                  },
+                  "mult": 1.8
+                },
+                {
+                  "if": {
+                    "op": "eq",
+                    "path": "origin",
+                    "value": "humble"
+                  },
+                  "mult": 0.5
+                }
+              ]
+            },
+            {
+              "id": "alone",
+              "weight": 0.6,
+              "title": "没人帮得上，走了标准重组",
+              "effects": [
+                {
+                  "op": "loan_repay",
+                  "value": {
+                    "kind": "restructure",
+                    "haircut": 0.5
+                  },
+                  "ledger": "D"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.no_new_debt_years",
+                  "value": 3,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -10,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "最后还是靠自己。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:restructure",
+        "trigger:conditional",
+        "subsystem:assets",
+        "counts_as_decision",
+        "max_per_life:2"
+      ],
+      "causal_key": "evt_d_restructure",
+      "condition": {
+        "op": "eq",
+        "path": "flags.formal_bankruptcy_pending",
+        "value": true
+      },
+      "intel_offers": [
+        {
+          "id": "INTEL_LEGAL",
+          "title": "请律师评估重组方案",
+          "fee": 3000,
+          "fee_formula": "clamp(0.0*stakes, 3000, 3000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 3000,
+            "max": 3000
+          },
+          "reveals": [
+            "hidden_risk",
+            "p_band"
+          ],
+          "hint_text": "花 3 千请律师。",
+          "preview_text": "你会看到：法庭大概会批几折、卖不卖唯一住房，以及重组后几年能恢复借贷资格。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_MIDLIFE",
+      "title": "四十多岁的路口",
+      "body": "体力不比从前，责任却更重。是冲一把、转个方向，还是放慢脚步顾家？",
+      "kind": "major_decision",
+      "age_range": [
+        40,
+        48
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "push",
+          "text": "冲刺晋升，再拼五年",
+          "evaluate_text": "可能升一级；健康 −6 到 −10。",
+          "cost": {
+            "time": 2
+          },
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "high",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "promoted",
+              "weight": 0.45,
+              "title": "升上去了",
+              "effects": [
+                {
+                  "op": "job_level",
+                  "value": 1,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -6,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "高处不胜寒，但收入上去了。",
+              "weight_mods": [
+                {
+                  "if": {
+                    "op": "gte",
+                    "path": "attrs.capability",
+                    "value": 70
+                  },
+                  "mult": 1.5
+                }
+              ]
+            },
+            {
+              "id": "burn",
+              "weight": 0.55,
+              "title": "没升上，身体先垮了一点",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -10,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": -4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "拼劲有代价。"
+            }
+          ],
+          "enabled_if": {
+            "op": "neq",
+            "path": "occupation.path",
+            "value": "founder"
+          },
+          "disabled_reason": "创业者没有晋升通道"
+        },
+        {
+          "id": "pivot",
+          "text": "转型：花钱学新技能，换个赛道",
+          "evaluate_text": "花 3 万；能力 +4 到 +8。",
+          "cost": {
+            "cash": 30000,
+            "time": 3
+          },
+          "stakes_class": "learn",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "new_lane",
+              "weight": 0.5,
+              "title": "转型成功",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -30000,
+                  "sub": "education",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 8,
+                  "ledger": "none"
+                },
+                {
+                  "op": "job_set",
+                  "value": {
+                    "industry": "random"
+                  },
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "四十岁也能重来。"
+            },
+            {
+              "id": "struggle",
+              "weight": 0.5,
+              "title": "新赛道难进，回到老路",
+              "effects": [
+                {
+                  "op": "cash_delta",
+                  "value": -30000,
+                  "sub": "education",
+                  "ledger": "E"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.capability",
+                  "value": 4,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "学到的不白学。"
+            }
+          ],
+          "enabled_if": {
+            "op": "gte",
+            "path": "computed.liquid",
+            "value": 30000
+          },
+          "disabled_reason": "需要 3 万"
+        },
+        {
+          "id": "slow",
+          "text": "放慢脚步，多顾家",
+          "evaluate_text": "家庭 +8 到 +10；三年不晋升。",
+          "cost": {},
+          "stakes_class": "family",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "home",
+              "weight": 0.8,
+              "title": "家里关系好了很多",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 10,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": 4,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.level_pause_years",
+                  "value": 3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "钱少挣一点，人更完整。"
+            },
+            {
+              "id": "guilt",
+              "weight": 0.2,
+              "title": "同龄人升职了，有点失落",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 8,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -3,
+                  "ledger": "none"
+                },
+                {
+                  "op": "flag_set",
+                  "path": "flags.level_pause_years",
+                  "value": 3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "取舍总有遗憾。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:midlife",
+        "trigger:fixed",
+        "subsystem:personal",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_midlife",
+      "intel_offers": [
+        {
+          "id": "INTEL_CAREER_COACH",
+          "title": "找职业教练做一次评估",
+          "fee": 5000,
+          "fee_formula": "clamp(0.0*stakes, 5000, 5000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 5000,
+            "max": 5000
+          },
+          "reveals": [
+            "p_band",
+            "hidden_risk"
+          ],
+          "hint_text": "花 5 千做一次评估。",
+          "preview_text": "你会看到：冲刺晋升的大致把握，以及按你现在的健康，继续高强度工作的风险。",
+          "changes_true_probability": false
+        }
+      ]
+    },
+    {
+      "id": "EVT_D_PRE_RETIRE",
+      "title": "退休前的安排",
+      "body": "离 65 岁不远了。要不要换小房子、把钱挪到更稳的地方，或者提前退下来？",
+      "kind": "major_decision",
+      "age_range": [
+        56,
+        60
+      ],
+      "weight": 1,
+      "opportunity": false,
+      "once": true,
+      "info_mode": "incomplete",
+      "options": [
+        {
+          "id": "derisk",
+          "text": "把风险资产挪到存款和货币基金",
+          "evaluate_text": "卖出有 5% 折价；之后几乎不回撤。",
+          "cost": {},
+          "stakes_class": "invest",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "safe",
+              "weight": 0.85,
+              "title": "睡得踏实",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 0.7
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.7
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "临近退休，先保本。"
+            },
+            {
+              "id": "missed",
+              "weight": 0.15,
+              "title": "之后两年股市涨了",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "sector_fund",
+                    "fraction": 1,
+                    "amount": "all"
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "index_fund",
+                    "fraction": 0.7
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "money_fund",
+                    "fraction_of_liquid": 0.7
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.happiness",
+                  "value": -1,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "安心有机会成本。"
+            }
+          ],
+          "decision_tags": [
+            "defensive"
+          ]
+        },
+        {
+          "id": "downsize",
+          "text": "卖大换小，释放现金",
+          "evaluate_text": "卖房 8% 折价并还清房贷，再全款买一套小一半的房子（现金不够就不买）。",
+          "cost": {},
+          "stakes_class": "housing",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "freed",
+              "weight": 0.8,
+              "title": "换了小房子，现金多了",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "housing",
+                    "fraction": 1
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "housing",
+                    "size": 0.5,
+                    "cash_only": true
+                  },
+                  "ledger": "F"
+                }
+              ],
+              "review_text": "房子小了，日子松了。"
+            },
+            {
+              "id": "hassle",
+              "weight": 0.2,
+              "title": "换房折腾了一整年",
+              "effects": [
+                {
+                  "op": "asset_sell",
+                  "value": {
+                    "product": "housing",
+                    "fraction": 1,
+                    "extra_haircut": 0.05
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "asset_buy",
+                  "value": {
+                    "product": "housing",
+                    "size": 0.5,
+                    "cash_only": true
+                  },
+                  "ledger": "F"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -2,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "交易成本不低。"
+            }
+          ],
+          "visible_if": {
+            "op": "eq",
+            "path": "flags.has_house",
+            "value": true
+          }
+        },
+        {
+          "id": "early_retire",
+          "text": "提前退下来，改做自由职业",
+          "evaluate_text": "收入下降；健康和家庭上升。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "medium",
+            "requires_planning": true
+          },
+          "outcomes": [
+            {
+              "id": "free",
+              "weight": 0.6,
+              "title": "时间是自己的了",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "freelance",
+                    "level": "mid",
+                    "industry": "consumer",
+                    "track": "freelance"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": 5,
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.family",
+                  "value": 5,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "收入少了，生活多了。"
+            },
+            {
+              "id": "thin",
+              "weight": 0.4,
+              "title": "收入比预想的少",
+              "effects": [
+                {
+                  "op": "job_set",
+                  "value": {
+                    "path": "freelance",
+                    "level": "entry",
+                    "industry": "consumer",
+                    "track": "freelance"
+                  },
+                  "ledger": "none"
+                },
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": 3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "提前退要算好账。"
+            }
+          ]
+        },
+        {
+          "id": "keep",
+          "text": "照常工作到 65",
+          "evaluate_text": "收入不变。",
+          "cost": {},
+          "stakes_class": "career",
+          "strategy_hints": {
+            "risk_exposure": "low",
+            "requires_planning": false
+          },
+          "outcomes": [
+            {
+              "id": "steady",
+              "weight": 0.9,
+              "title": "照常",
+              "effects": [
+                {
+                  "op": "log",
+                  "memo": "照常",
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "不变。"
+            },
+            {
+              "id": "tired",
+              "weight": 0.1,
+              "title": "最后几年有点吃不消",
+              "effects": [
+                {
+                  "op": "attr_delta",
+                  "path": "attrs.health",
+                  "value": -3,
+                  "ledger": "none"
+                }
+              ],
+              "review_text": "坚持也有代价。"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "slot:pre_retire",
+        "trigger:fixed",
+        "subsystem:assets",
+        "counts_as_decision"
+      ],
+      "causal_key": "evt_d_pre_retire",
+      "intel_offers": [
+        {
+          "id": "INTEL_RETIRE_PLAN",
+          "title": "做一份退休现金流测算",
+          "fee": 3000,
+          "fee_formula": "clamp(0.0*stakes, 3000, 3000)",
+          "fee_rule": {
+            "rate": 0,
+            "stakes": "stakes",
+            "min": 3000,
+            "max": 3000
+          },
+          "reveals": [
+            "outcome_sigma",
+            "debt_roll_risk"
+          ],
+          "hint_text": "花 3 千做测算。",
+          "preview_text": "你会看到：按现在的资产和开销，退休后每年的被动收入能覆盖几成生活费，以及最差情形下几年会花光。",
+          "changes_true_probability": false
+        }
+      ]
+    }
+  ]
+}

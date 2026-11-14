@@ -1,0 +1,250 @@
+{
+  "id": "dev-assumptions",
+  "version": "0.1.0",
+  "comment": "研发假设参数：economy.v1.json 1.0.1 未给出、但引擎必须有的数值。全部记入 OPEN-ISSUES.md，待策划部并入正式配置。源码里不写死这些数。",
+  "housing_base_price": 1200000,
+  "owner_rent_saving": 0,
+  "wage_inflation_indexed": true,
+  "standard_deduction": 60000,
+  "capability_salary_slope": 0.006,
+  "promotion_capability_mult": [
+    0.5,
+    1
+  ],
+  "reemploy_p": {
+    "base": 0.45,
+    "capability": 0.3,
+    "network": 0.1,
+    "unemployment": -1
+  },
+  "health": {
+    "start": [
+      82,
+      95
+    ],
+    "decay_after": 35,
+    "decay_per_year": 0.5,
+    "decay_after_50_extra": 0.6,
+    "hedonic_extra": 0.5,
+    "frugal_recover": 0.2,
+    "illness_p": 0,
+    "illness_p_after_45": 0,
+    "illness_cost": 40000,
+    "illness_hit": 15
+  },
+  "energy_start": 70,
+  "happiness_start": 60,
+  "family_start": [
+    45,
+    70
+  ],
+  "reputation_start": 30,
+  "capability_growth": {
+    "employed_until": 45,
+    "per_year": 0.8
+  },
+  "education": {
+    "years": 4,
+    "annual_cost": 15000,
+    "capability_gain": 3,
+    "cognition_gain": 2
+  },
+  "edu_weights_by_origin": {
+    "humble": {
+      "edu_vocational": 0.45,
+      "edu_academic": 0.45,
+      "edu_elite": 0.1
+    },
+    "middle": {
+      "edu_vocational": 0.25,
+      "edu_academic": 0.55,
+      "edu_elite": 0.2
+    },
+    "wealthy": {
+      "edu_vocational": 0.1,
+      "edu_academic": 0.5,
+      "edu_elite": 0.4
+    }
+  },
+  "edu_salary_mult": {
+    "edu_vocational": 0.92,
+    "edu_academic": 1,
+    "edu_elite": 1.12
+  },
+  "talents": [
+    {
+      "id": "T_BUSINESS",
+      "name": "生意头脑",
+      "desc": "创业需求略高"
+    },
+    {
+      "id": "T_ACADEMIC",
+      "name": "学习力",
+      "desc": "认知与能力成长更快"
+    },
+    {
+      "id": "T_SOCIAL",
+      "name": "人缘",
+      "desc": "人脉更广，求职更顺"
+    },
+    {
+      "id": "T_IRON",
+      "name": "铁打身体",
+      "desc": "健康衰减更慢"
+    },
+    {
+      "id": "T_PRUDENT",
+      "name": "审慎",
+      "desc": "投资波动更小"
+    },
+    {
+      "id": "T_FRUGAL",
+      "name": "精打细算",
+      "desc": "生活费更低"
+    }
+  ],
+  "talent_effects": {
+    "T_BUSINESS": {
+      "venture_demand_mult": 1.12
+    },
+    "T_ACADEMIC": {
+      "capability_growth_mult": 1.4,
+      "cognition_bonus": 8
+    },
+    "T_SOCIAL": {
+      "network_bonus": 10,
+      "reemploy_bonus": 0.1
+    },
+    "T_IRON": {
+      "health_decay_mult": 0.65
+    },
+    "T_PRUDENT": {
+      "invest_sigma_mult": 0.8
+    },
+    "T_FRUGAL": {
+      "living_mult": 0.9
+    }
+  },
+  "invest_cycle_mod": {
+    "deposit": {
+      "boom": 0,
+      "slowdown": 0,
+      "recession": 0,
+      "recovery": 0
+    },
+    "money_fund": {
+      "boom": 0,
+      "slowdown": 0.002,
+      "recession": 0,
+      "recovery": 0
+    },
+    "index_fund": {
+      "boom": 0.05,
+      "slowdown": -0.04,
+      "recession": -0.12,
+      "recovery": 0.06
+    },
+    "sector_fund": {
+      "boom": 0.07,
+      "slowdown": -0.05,
+      "recession": -0.16,
+      "recovery": 0.07
+    },
+    "housing": {
+      "boom": 0.03,
+      "slowdown": -0.01,
+      "recession": -0.06,
+      "recovery": 0.02
+    }
+  },
+  "invest_mix": {
+    "cash_heavy": {
+      "deposit": 0.7,
+      "money_fund": 0.3
+    },
+    "balanced": {
+      "deposit": 0.3,
+      "money_fund": 0.2,
+      "index_fund": 0.5
+    },
+    "aggressive": {
+      "deposit": 0.1,
+      "index_fund": 0.55,
+      "sector_fund": 0.35
+    }
+  },
+  "cash_buffer_months": 6,
+  "emergency_credit": {
+    "rate_spread": 0.06,
+    "cap_income_mult": 3,
+    "cap_min": 100000,
+    "term_years": 5,
+    "_note": "对齐 schedule.json bankruptcy_rules：5 年期过桥贷，基准+6%"
+  },
+  "consumer_rate_spread": 0.04,
+  "bankruptcy": {
+    "debt_over_resources_mult": 2,
+    "restructure_keep_factor": [
+      0.4,
+      0.6
+    ],
+    "no_leverage_years": 3,
+    "min_cash_floor": 12000,
+    "floor_frugal_months": 3,
+    "mortgage_term_extend": 5,
+    "reputation_hit": 10,
+    "happiness_hit": 10,
+    "formal_min_debt_living_months": 12
+  },
+  "venture": {
+    "reference_price": 100,
+    "capacity_per_head": 1500,
+    "fixed_cost": 30000,
+    "demand_sigma": 0.25,
+    "shock_mult": 3,
+    "capability_slope": 0.01,
+    "draw_fraction_of_excess": 0.6,
+    "close_after_crisis_years": 2,
+    "equity_profit_multiple": 3,
+    "fixed_asset_share": 0.6,
+    "depreciation": 0.15,
+    "forced_close_debt_ratio": 0.5
+  },
+  "scheduling": {
+    "major_slots": 11,
+    "first_slot_age": 19,
+    "last_slot_age": 63,
+    "max_decisions": 24,
+    "catch_up_years_per_missing": 0,
+    "catch_up_extra_choice": 2,
+    "fallback_event": "EVT_DEV_PORTFOLIO"
+  },
+  "severance_months_cap": 12,
+  "invest_window_gain": 0.12,
+  "endings": {
+    "self_made_real": 1500000,
+    "compound_min_invested_real": 150000,
+    "comeback_min_real": 50000,
+    "career_peak_years": 3,
+    "founder_equity": 1000000,
+    "high_income_real": 250000,
+    "hedonic_years_min": 12,
+    "paper_rich_real": 2000000,
+    "paper_rich_liquid_share": 0.15,
+    "missed_windows_min": 3
+  },
+  "side_income_mean": 15000,
+  "light_overwork_share": 0.5,
+  "event_cash_price_indexed": true,
+  "comment_keys": {
+    "scheduling_catch_up": "预计到 65 岁可选决策 < target_per_life 下限（12）且剩余年数 ≤ 缺口×4 时，无决策年份 choice 事件概率改为 1，一生上限 +2（默认关闭=0；策划部 12:30 前在内容里修最少决策数，开关留着备用，设 4 即开启）",
+    "scheduling": "每局固定 11 个关键决策年龄 + 2 个开局选择 + 事件触发（上限 18）",
+    "light_overwork_share": "时间 = 12 格时按 overwork_health_penalty 的一半扣健康（配置只定义了 >12）",
+    "event_cash_price_indexed": "事件模板里的固定金额按当年物价指数放大"
+  },
+  "drawdown_min_peak_real": 100000,
+  "partner_income": 42000,
+  "index_dividend_yield": 0.02,
+  "renter_rent_rate": 0.012,
+  "_housing_note": "10:20 起对齐策划参考引擎：基准房价 120 万 × housing_base；租房者（22 岁起）每年另付 1.2% × 当前房价；自住不再减生活费；房价指数按实际值累计（修正此前名义回报再乘物价的重复计通胀）"
+}

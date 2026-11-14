@@ -1,0 +1,851 @@
+{
+  "config_id": "economy.v1",
+  "config_ver": "1.0.1",
+  "ruleset_id": "life-v1-direction-b",
+  "effective_from": "2026-11-14",
+  "notes": "V1.0 方向 B 数值规则配置样例。所有公式常数只允许出现在本文件（或同版本增量文件），禁止在引擎源码写死。对局开始时把本版本号写入 LifeRecord.ruleset_ver，回放必须用同一版本。数值是第一阶段可玩的初值，需经第八节一致性测试与破产率扫描后再锁定。",
+  "session": {
+    "age_start": 18,
+    "age_end": 65,
+    "max_annual_turns": 47,
+    "major_decisions_target": [
+      12,
+      18
+    ],
+    "decision_time_seconds": [
+      20,
+      45
+    ],
+    "session_minutes_target": [
+      10,
+      15
+    ],
+    "early_special_endings_allowed": true,
+    "default_survives_to_end": true,
+    "death_as_default_ending": false
+  },
+  "opening": {
+    "seed_format": "LIFE-{code}",
+    "seed_code_alphabet": "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+    "seed_code_length": 5,
+    "origins": [
+      "humble",
+      "middle",
+      "wealthy"
+    ],
+    "origin_weights": [
+      0.34,
+      0.46,
+      0.2
+    ],
+    "city_econ_types": [
+      {
+        "id": "industrial_new",
+        "name": "产业新城",
+        "blurb": "制造与出口占比高，繁荣时工资弹性大，衰退时外需冲击明显。",
+        "housing_base": 0.85,
+        "wage_base": 0.95,
+        "opportunity_density": 0.95,
+        "industry_bias": [
+          "manufacturing",
+          "export",
+          "logistics"
+        ]
+      },
+      {
+        "id": "service_metro",
+        "name": "服务型都市",
+        "blurb": "职业与金融服务业密集，房价高、信息密度高，容错成本也高。",
+        "housing_base": 1.35,
+        "wage_base": 1.2,
+        "opportunity_density": 1.25,
+        "industry_bias": [
+          "finance",
+          "professional",
+          "consumer"
+        ]
+      },
+      {
+        "id": "inland_domestic",
+        "name": "内需腹地",
+        "blurb": "本地需求主导，波动较小，机会密度较低，生活成本与房价更友好。",
+        "housing_base": 0.7,
+        "wage_base": 0.85,
+        "opportunity_density": 0.8,
+        "industry_bias": [
+          "local_service",
+          "resources",
+          "public"
+        ]
+      }
+    ],
+    "eras": [
+      {
+        "id": "reform_opening",
+        "name": "开放扩张期",
+        "cycle_bias": "boom"
+      },
+      {
+        "id": "high_growth",
+        "name": "高速增长期",
+        "cycle_bias": "boom"
+      },
+      {
+        "id": "transition",
+        "name": "结构转型期",
+        "cycle_bias": "slowdown"
+      },
+      {
+        "id": "uncertainty",
+        "name": "波动调整期",
+        "cycle_bias": "recession"
+      }
+    ],
+    "talents_reroll_free": 1,
+    "starting_cash_by_origin": {
+      "humble": 18000,
+      "middle": 55000,
+      "wealthy": 180000
+    },
+    "starting_capability_by_origin": {
+      "humble": [
+        38,
+        52
+      ],
+      "middle": [
+        45,
+        60
+      ],
+      "wealthy": [
+        50,
+        68
+      ]
+    },
+    "starting_network_by_origin": {
+      "humble": [
+        25,
+        40
+      ],
+      "middle": [
+        35,
+        55
+      ],
+      "wealthy": [
+        50,
+        70
+      ]
+    }
+  },
+  "rng_streams": {
+    "algorithm": "cpython313_mt19937",
+    "streams": [
+      "opening",
+      "macro",
+      "personal",
+      "business",
+      "intel"
+    ],
+    "hash": "fnv1a32",
+    "hash_params": {
+      "offset_basis": 2166136261,
+      "prime": 16777619,
+      "input_encoding": "utf-8 bytes",
+      "output": "uint32"
+    },
+    "key_template": "{seed}|{ruleset_ver}|{stream}",
+    "derivation": "stream_rng = PythonRNG(fnv1a32(utf8(seed + '|' + ruleset_ver + '|' + stream)))，PythonRNG(n) 等价于 CPython 3.13 random.Random(n)",
+    "seed_is_string": true,
+    "test_vectors_file": "acceptance/rng-stream-vectors.json"
+  },
+  "macro": {
+    "cycles": [
+      "boom",
+      "slowdown",
+      "recession",
+      "recovery"
+    ],
+    "transition": {
+      "boom": {
+        "boom": 0.55,
+        "slowdown": 0.3,
+        "recession": 0.05,
+        "recovery": 0.1
+      },
+      "slowdown": {
+        "boom": 0.15,
+        "slowdown": 0.4,
+        "recession": 0.3,
+        "recovery": 0.15
+      },
+      "recession": {
+        "boom": 0.05,
+        "slowdown": 0.15,
+        "recession": 0.45,
+        "recovery": 0.35
+      },
+      "recovery": {
+        "boom": 0.4,
+        "slowdown": 0.15,
+        "recession": 0.1,
+        "recovery": 0.35
+      }
+    },
+    "min_years_in_cycle": 2,
+    "max_years_in_cycle": 6,
+    "indicators": {
+      "boom": {
+        "inflation": 0.035,
+        "interest": 0.045,
+        "unemployment": 0.035
+      },
+      "slowdown": {
+        "inflation": 0.055,
+        "interest": 0.065,
+        "unemployment": 0.055
+      },
+      "recession": {
+        "inflation": 0.01,
+        "interest": 0.04,
+        "unemployment": 0.09
+      },
+      "recovery": {
+        "inflation": 0.02,
+        "interest": 0.035,
+        "unemployment": 0.065
+      }
+    },
+    "indicator_noise_sigma": {
+      "inflation": 0.004,
+      "interest": 0.003,
+      "unemployment": 0.006
+    },
+    "industry_shock": {
+      "comment": "加在该行业名义收入与经营毛利上的额外收益率（年）。衰退时出口/制造伤得更重，公共服务更稳。",
+      "boom": {
+        "manufacturing": 0.04,
+        "export": 0.06,
+        "finance": 0.05,
+        "professional": 0.04,
+        "consumer": 0.04,
+        "logistics": 0.03,
+        "local_service": 0.02,
+        "resources": 0.03,
+        "public": 0.01
+      },
+      "slowdown": {
+        "manufacturing": -0.02,
+        "export": -0.03,
+        "finance": 0,
+        "professional": 0,
+        "consumer": -0.02,
+        "logistics": -0.02,
+        "local_service": 0,
+        "resources": 0.01,
+        "public": 0.01
+      },
+      "recession": {
+        "manufacturing": -0.08,
+        "export": -0.12,
+        "finance": -0.06,
+        "professional": -0.04,
+        "consumer": -0.05,
+        "logistics": -0.06,
+        "local_service": -0.03,
+        "resources": -0.04,
+        "public": 0
+      },
+      "recovery": {
+        "manufacturing": 0.03,
+        "export": 0.04,
+        "finance": 0.02,
+        "professional": 0.02,
+        "consumer": 0.03,
+        "logistics": 0.03,
+        "local_service": 0.02,
+        "resources": 0.02,
+        "public": 0.01
+      }
+    },
+    "legacy_v0_read_only_alias": {
+      "stagflation": "slowdown",
+      "comment": "仅用于读取旧小样数据：旧 stagflation 映射到新 slowdown。新对局只允许 boom/slowdown/recession/recovery 四态。"
+    }
+  },
+  "cashflow": {
+    "identity": "C(t+1) = C(t) + I - E - T - D + F",
+    "net_worth_identity": "NW = A - L",
+    "components": {
+      "I": [
+        "salary_net_before_tax",
+        "business_owner_draw",
+        "investment_distribution",
+        "other_income"
+      ],
+      "E": [
+        "living_cost",
+        "education_spend",
+        "business_cash_opex_if_unincorporated",
+        "insurance_premium",
+        "intel_fee",
+        "other_spend"
+      ],
+      "T": [
+        "income_tax",
+        "social_insurance",
+        "property_tax",
+        "transaction_tax"
+      ],
+      "D": [
+        "mortgage_interest",
+        "mortgage_principal",
+        "consumer_loan_interest",
+        "consumer_loan_principal",
+        "business_loan_personal_guarantee"
+      ],
+      "F": [
+        "new_personal_loan",
+        "new_mortgage",
+        "business_financing_to_personal",
+        "asset_sale_proceeds",
+        "asset_purchase_outflow"
+      ]
+    },
+    "ledger_required": true,
+    "tolerance": 0.01,
+    "comment": "每一笔对 C 的改动必须有 LedgerEntry。年结后用恒等式对账，误差超过 tolerance 视为引擎故障。asset_purchase_outflow 记入 F 的负项，不得直接改 C 而不入账。"
+  },
+  "tax": {
+    "income_tax_brackets": [
+      {
+        "up_to": 36000,
+        "rate": 0.03
+      },
+      {
+        "up_to": 144000,
+        "rate": 0.1
+      },
+      {
+        "up_to": 300000,
+        "rate": 0.2
+      },
+      {
+        "up_to": 420000,
+        "rate": 0.25
+      },
+      {
+        "up_to": 660000,
+        "rate": 0.3
+      },
+      {
+        "up_to": 960000,
+        "rate": 0.35
+      },
+      {
+        "up_to": null,
+        "rate": 0.45
+      }
+    ],
+    "social_insurance_rate_employee": 0.105,
+    "property_tax_rate": 0.003,
+    "transaction_tax_housing": 0.01,
+    "comment": "税率结构是游戏简化，不是税法仿真。向玩家展示「税」科目，用于现金流教学，不宣称与真实税制一致。"
+  },
+  "career": {
+    "paths": [
+      {
+        "id": "public",
+        "name": "公务/事业",
+        "stability": 0.9,
+        "ceiling": 0.7,
+        "side_hustle_penalty": 0.4
+      },
+      {
+        "id": "employee",
+        "name": "企业雇员",
+        "stability": 0.6,
+        "ceiling": 0.85,
+        "side_hustle_penalty": 0.15
+      },
+      {
+        "id": "professional",
+        "name": "专业执业",
+        "stability": 0.7,
+        "ceiling": 0.9,
+        "side_hustle_penalty": 0.1
+      },
+      {
+        "id": "freelance",
+        "name": "自由职业",
+        "stability": 0.35,
+        "ceiling": 0.8,
+        "side_hustle_penalty": 0
+      },
+      {
+        "id": "trade",
+        "name": "技能工贸",
+        "stability": 0.55,
+        "ceiling": 0.75,
+        "side_hustle_penalty": 0.05
+      },
+      {
+        "id": "founder",
+        "name": "创始人",
+        "stability": 0.25,
+        "ceiling": 1,
+        "side_hustle_penalty": 0
+      }
+    ],
+    "levels": [
+      "entry",
+      "mid",
+      "senior",
+      "principal"
+    ],
+    "base_salary": {
+      "public": {
+        "entry": 72000,
+        "mid": 108000,
+        "senior": 156000,
+        "principal": 216000
+      },
+      "employee": {
+        "entry": 84000,
+        "mid": 144000,
+        "senior": 240000,
+        "principal": 420000
+      },
+      "professional": {
+        "entry": 96000,
+        "mid": 180000,
+        "senior": 300000,
+        "principal": 480000
+      },
+      "freelance": {
+        "entry": 60000,
+        "mid": 120000,
+        "senior": 216000,
+        "principal": 360000
+      },
+      "trade": {
+        "entry": 66000,
+        "mid": 108000,
+        "senior": 168000,
+        "principal": 240000
+      },
+      "founder": {
+        "entry": 0,
+        "mid": 0,
+        "senior": 0,
+        "principal": 0
+      }
+    },
+    "promotion_p_base": {
+      "entry": 0.18,
+      "mid": 0.1,
+      "senior": 0.05,
+      "principal": 0
+    },
+    "layoff_p_base": {
+      "public": 0.01,
+      "employee": 0.04,
+      "professional": 0.02,
+      "freelance": 0.08,
+      "trade": 0.05,
+      "founder": 0
+    },
+    "layoff_cycle_mult": {
+      "boom": 0.4,
+      "slowdown": 1.2,
+      "recession": 2.4,
+      "recovery": 0.8
+    },
+    "unemployment_benefit_months": 6,
+    "unemployment_benefit_rate": 0.4
+  },
+  "living": {
+    "base_by_city": {
+      "industrial_new": 42000,
+      "service_metro": 62000,
+      "inland_domestic": 32000
+    },
+    "lifestyle_mult": {
+      "frugal": 0.75,
+      "decent": 1,
+      "hedonic": 1.45
+    },
+    "family_child_add": 18000,
+    "partner_add": 8000,
+    "wealth_log_floor": 400000,
+    "wealth_log_coef": 0.35,
+    "liquid_linear_threshold": 2000000,
+    "liquid_linear_coef": 0.02,
+    "inflation_pass_through": 1
+  },
+  "investment": {
+    "products": {
+      "deposit": {
+        "mu": 0.015,
+        "sigma": 0,
+        "liquidity": 1,
+        "risk_free_like": true
+      },
+      "money_fund": {
+        "mu": 0.02,
+        "sigma": 0.005,
+        "liquidity": 0.99,
+        "risk_free_like": true
+      },
+      "index_fund": {
+        "mu": 0.07,
+        "sigma": 0.16,
+        "liquidity": 0.95,
+        "risk_free_like": false
+      },
+      "sector_fund": {
+        "mu": 0.085,
+        "sigma": 0.24,
+        "liquidity": 0.95,
+        "risk_free_like": false
+      },
+      "housing": {
+        "mu": 0.04,
+        "sigma": 0.1,
+        "liquidity": 0.15,
+        "risk_free_like": false
+      }
+    },
+    "real_return": "nominal = mu + inflation_beta * inflation + cycle_mod + shock; real = nominal - inflation",
+    "inflation_beta": {
+      "deposit": 0.15,
+      "money_fund": 0.25,
+      "index_fund": 0.6,
+      "sector_fund": 0.55,
+      "housing": 0.8
+    },
+    "liquidation_haircut": {
+      "deposit": 0,
+      "money_fund": 0,
+      "index_fund": 0.05,
+      "sector_fund": 0.05,
+      "housing": 0.08
+    },
+    "wealth_convergence": {
+      "A_floor": 1500000,
+      "A_soft": 3500000,
+      "apply_to": [
+        "index_fund",
+        "sector_fund",
+        "housing",
+        "venture_equity"
+      ],
+      "senior_sigma_start_age": 60,
+      "senior_sigma_slope": 0.035,
+      "senior_sigma_floor": 0.3
+    },
+    "no_risk_free_excess": {
+      "scan_years": 20,
+      "max_annualized_real_excess_over_deposit": 0.01,
+      "strategies": [
+        "all_deposit",
+        "all_money_fund",
+        "barbell_deposit_index",
+        "buy_hold_index"
+      ]
+    }
+  },
+  "housing_loan": {
+    "down_payment_rate_by_city": {
+      "industrial_new": 0.25,
+      "service_metro": 0.3,
+      "inland_domestic": 0.2
+    },
+    "max_ltv": 0.8,
+    "mortgage_term_years": 25,
+    "rate": "macro.indicators[cycle].interest + 0.015",
+    "amortization": "equal_installment",
+    "overdue_grace_years": 1,
+    "foreclosure_after_overdue_years": 2,
+    "comment": "废除旧小样「本金每年 ×0.94」算法，改为等额本息。利息与本金必须分列记入 D。"
+  },
+  "venture": {
+    "personal_and_business_books_separated": true,
+    "actions": [
+      "set_product",
+      "set_price",
+      "hire",
+      "fire",
+      "expand",
+      "set_reserve_ratio",
+      "raise_finance",
+      "owner_draw",
+      "exit_sale",
+      "exit_shutdown"
+    ],
+    "starting_cash_reserve_min": 0.15,
+    "price_elasticity": -1.1,
+    "unit_cost_base": 40,
+    "demand_base": 8000,
+    "hire_productivity": 1,
+    "hire_annual_cost": 84000,
+    "finance": {
+      "max_leverage": 1.5,
+      "interest_spread": 0.03,
+      "dilution_on_equity_round": 0.2
+    },
+    "exit": {
+      "sale_multiple_ebitda": [
+        4,
+        10
+      ],
+      "shutdown_recovery": 0.35
+    },
+    "failure_is_not_game_over": true,
+    "gold_standard_p_delta_w_reserved_for": "major_decision_only"
+  },
+  "personal": {
+    "attrs": [
+      "health",
+      "energy",
+      "family",
+      "capability",
+      "network",
+      "reputation",
+      "cognition"
+    ],
+    "attr_range": [
+      0,
+      100
+    ],
+    "annual_time_budget": 12,
+    "time_cost_job": {
+      "public": 8,
+      "employee": 8,
+      "professional": 8,
+      "freelance": 6,
+      "trade": 8,
+      "founder": 9
+    },
+    "time_cost_side_venture": 4,
+    "time_cost_education": 3,
+    "overwork_if_time_used_gt": 12,
+    "overwork_health_penalty": 6,
+    "energy_regen": 20,
+    "health_floor_for_special_ending": 5
+  },
+  "decision": {
+    "stages": [
+      "identify",
+      "gather_intel",
+      "evaluate",
+      "choose",
+      "review"
+    ],
+    "intel": {
+      "enabled": true,
+      "currency": "cash",
+      "fee_range": [
+        2000,
+        25000
+      ],
+      "fee_scales_with": "decision_stakes_cash",
+      "fee_rate": 0.02,
+      "fee_min": 2000,
+      "fee_max": 25000,
+      "effects": [
+        "reveal_p_band",
+        "reveal_one_hidden_risk",
+        "reveal_industry_outlook",
+        "narrow_outcome_sigma"
+      ],
+      "does_not_change_true_p_only_belief": true,
+      "time_cost": 0
+    },
+    "info_modes": [
+      "complete",
+      "incomplete"
+    ],
+    "default_info_mode": "incomplete",
+    "qualitative_p_without_intel": false,
+    "qualitative_p_with_intel": true
+  },
+  "scoring": {
+    "result_dimensions": {
+      "wealth_freedom": {
+        "weight_note": "独立展示，不合成总分"
+      },
+      "family_stability": {},
+      "career_achievement": {},
+      "healthy_life": {},
+      "balanced_growth": {}
+    },
+    "strategy_weights": {
+      "risk_management": 0.25,
+      "cashflow_allocation": 0.25,
+      "information_judgment": 0.2,
+      "opportunity_cost": 0.15,
+      "planning_adaptability": 0.15
+    },
+    "strategy_scored_on": "information_known_at_decision_and_outcome_distribution",
+    "strategy_not_scored_on": "ex_post_profit",
+    "leaderboards": [
+      "strategy",
+      "result"
+    ],
+    "no_single_absolute_ladder": true,
+    "percentile_cohort": "same_origin_and_era_and_ruleset_ver"
+  },
+  "endings": {
+    "mode": "stackable_titles",
+    "min_count": 12,
+    "presentation": "primary_title + secondary_title + one_line_comment",
+    "catalog": [
+      {
+        "id": "E_SELF_MADE",
+        "name": "白手起家",
+        "when": "origin==humble AND NW>=P70_of_cohort AND no_inheritance_flag"
+      },
+      {
+        "id": "E_ERA_RIDER",
+        "name": "时代弄潮儿",
+        "when": "at_least_two_matched_era_bets_succeeded AND wind_capture_rate>=0.5"
+      },
+      {
+        "id": "E_COMPOUND",
+        "name": "稳健复利家",
+        "when": "annualized_real_return in [0.04,0.10] AND max_drawdown<=0.25 AND never_bankrupt"
+      },
+      {
+        "id": "E_COMEBACK",
+        "name": "逆风翻盘",
+        "when": "had_crisis AND recovered AND final_NW>=pre_crisis_NW"
+      },
+      {
+        "id": "E_FREE_LIFE",
+        "name": "自由生活家",
+        "when": "passive_income>=living_cost*1.2 for last 5 years AND lifestyle!=overwork"
+      },
+      {
+        "id": "E_CAREER_PEAK",
+        "name": "职场登峰者",
+        "when": "path in {public,employee,professional} AND level==principal AND tenure>=8"
+      },
+      {
+        "id": "E_FOUNDER",
+        "name": "创业冒险家",
+        "when": "founded AND (exit_success OR venture_value>=threshold) AND accepted_risk"
+      },
+      {
+        "id": "E_STEWARD",
+        "name": "资产守护者",
+        "when": "max_drawdown<=0.15 AND never_missed_debt AND family>=60"
+      },
+      {
+        "id": "E_HIGH_INCOME_TRAP",
+        "name": "高收入困局",
+        "when": "income_P80 AND liquid_runway_months<6 AND lifestyle==hedonic"
+      },
+      {
+        "id": "E_PAPER_RICH",
+        "name": "纸面富翁",
+        "when": "NW>=P80 AND liquid_assets/NW<=0.15 AND housing+venture share high"
+      },
+      {
+        "id": "E_MISSED_WINDOW",
+        "name": "错过风口",
+        "when": "at_least_two_major_windows_declined AND counterfactual_EV_gap>=threshold"
+      },
+      {
+        "id": "E_ORDINARY_RICH",
+        "name": "平凡而丰盛",
+        "when": "balanced_growth high AND no_extreme_title AND family+health>=threshold"
+      }
+    ],
+    "fallback_primary": "E_ORDINARY_RICH",
+    "special_early": [
+      {
+        "id": "E_EARLY_HEALTH",
+        "name": "因健康提前收束",
+        "ends_life": true
+      }
+    ]
+  },
+  "bankruptcy": {
+    "comment": "旧小样种子 20261113 破产率 18.4%，落在旧带上沿，且破产直接清零流动资产、几乎不可逆。V1.0 改定义并下调目标。",
+    "definitions": {
+      "liquidity_crunch": "现金+可变现资产按折现后不足以支付当年 E+D，且持续 1 年。可依靠变现、再融资、压缩生活费在次年恢复。计入「经历过危机」，不计入正式破产。",
+      "formal_bankruptcy": "连续 2 年无法偿债，或负债 > 2×（折现后可变现资产+稳定年收入），进入重组：部分债务减免、流动资产部分清算、声誉与幸福惩罚，但保留一套最低生活现金与住房居住权（若有唯一住宅）。不是游戏结束，是可逆袭状态。",
+      "game_over_on_bankruptcy": false
+    },
+    "target_rates": {
+      "cohort": "1000 runs, fixed seed, default free ruleset, age 18-65, random-but-legal policy (uniform among enabled options)",
+      "formal_bankruptcy": {
+        "min": 0.08,
+        "max": 0.15,
+        "ideal": [
+          0.1,
+          0.12
+        ]
+      },
+      "liquidity_crunch_ever": {
+        "min": 0.18,
+        "max": 0.32,
+        "ideal": [
+          0.22,
+          0.28
+        ]
+      },
+      "unrecoverable_dead_end": {
+        "max": 0.03,
+        "comment": "重组后直到 65 岁再也爬不起来的比例，必须低于 3%。"
+      },
+      "comeback_among_crisis": {
+        "min": 0.35,
+        "comment": "经历危机的对局中，最终 NW 回到或超过危机前的比例，支撑「逆风翻盘」。"
+      }
+    },
+    "controls": [
+      "最低生活现金 floor：正式破产后保留 max(12000, 3 个月 frugal 生活费)，不再 triggerBankruptcy 式清零。",
+      "等额本息 + 逾期宽限 1 年 + 唯一住宅暂缓拍卖，避免旧模型「房贷永远还不清 → 逾期 → 破产」的吸收态。",
+      "年中现金跑道预警（runway_months < 6 时强制提示），计策略分风险管理。",
+      "付费情报可揭示「债务滚动风险」「行业衰退冲击」。",
+      "生活费与利率、失业率全部在本配置中可调；发布前用 seed=20261113 与至少两个交叉种子各 1000 局扫描，若 formal_bankruptcy 落在区间外，只改本文件并升小版本，不改引擎。",
+      "重组路径：债务打折 0.4–0.6、禁止新杠杆 3 年、保留职业收入。",
+      "财富收敛与生活费随流动资产上升，防止极端富豪无限加杠杆后「怎么都破不了」或「随机一笔就爆」。",
+      "失业金 6 个月，衰退时自动提高政策可见性（公共培训事件）。"
+    ],
+    "legacy_reference": {
+      "old_sample_seed": 20261113,
+      "old_formal_rate": 0.184,
+      "old_trigger": "life.ts triggerBankruptcy / 房贷逾期且 debt > 2*liquid",
+      "do_not_tune_old_engine_for_v1": true
+    }
+  },
+  "monetization": {
+    "base": "free",
+    "sku": [
+      {
+        "id": "theme_script",
+        "price_cny": 9.9,
+        "grant": "one_theme_script"
+      },
+      {
+        "id": "deep_review",
+        "price_cny": 6.9,
+        "grant": "one_life_deep_review"
+      }
+    ],
+    "no_membership_in_v1": true,
+    "no_gacha": true,
+    "no_pay_to_win_rolls": true
+  },
+  "analytics_events": [
+    "game_start",
+    "decision_complete",
+    "game_end",
+    "share_click",
+    "share_visit",
+    "second_game_start",
+    "pay_click",
+    "pay_success"
+  ]
+}

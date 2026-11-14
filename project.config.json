@@ -1,0 +1,25 @@
+{
+  "description": "这局人生 · 微信小游戏版",
+  "compileType": "game",
+  "appid": "touristappid",
+  "projectname": "zhejurensheng",
+  "libVersion": "3.6.0",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": false,
+    "minified": true,
+    "uglifyFileName": false,
+    "ignoreUploadUnusedFiles": true
+  },
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "docs" },
+      { "type": "folder", "value": "tools" },
+      { "type": "folder", "value": "preview" },
+      { "type": "file", "value": "README.md" }
+    ]
+  },
+  "condition": {}
+}

@@ -1,0 +1,429 @@
+{
+  "config_ver": "0.1.0",
+  "pack_id": "endings-v1-mvp",
+  "economy_config_id": "economy.v1",
+  "mode": "stackable_titles",
+  "selection": {
+    "rule": "65 岁年结后（或提前收束时）计算 metrics，逐个判定 12 个结局；命中的按 priority 从小到大排序，第 1 个是主称号，其后最多 2 个是副称号（每局最多 3 个称号）。一个都没命中时，主称号用 fallback。",
+    "max_titles": 3,
+    "fallback": "E_ORDINARY_RICH",
+    "exclusive_pairs": [
+      [
+        "E_STEWARD",
+        "E_HIGH_INCOME_TRAP"
+      ],
+      [
+        "E_COMPOUND",
+        "E_PAPER_RICH"
+      ],
+      [
+        "E_ERA_RIDER",
+        "E_MISSED_WINDOW"
+      ]
+    ],
+    "exclusive_rule": "互斥对同时命中时，只保留 priority 小的那个",
+    "card_layout": "主称号（大字）+ 副称号（小字，用 · 连接）+ 主称号的一句话点评（占位符用 metrics 填）"
+  },
+  "metrics": {
+    "nw_final": "65 岁年末净资产 NW = cash + ΣA − ΣL（元）",
+    "nw_real_final": "nw_final / price_index（开局 = 1，每年乘 1 + 当年通胀）",
+    "liquid_final": "cash + deposit + money_fund + 0.95 × (index_fund + sector_fund)",
+    "liquid_share": "liquid_final / max(nw_final, 1)",
+    "runway_months": "liquid_final / (最后一年生活费 / 12)",
+    "income_peak_real": "一生最高的年度税前劳动加经营收入，除以当年 price_index",
+    "passive_ratio": "最后 3 年平均：（投资分红与利息 + 经营分红）/ 生活费",
+    "max_drawdown": "净资产从峰值到其后谷底的最大回撤比例（峰值 < 10 万时不计）",
+    "years_index_held": "年末指数基金市值 ≥ 2 万的年数",
+    "had_formal_bankruptcy": "是否进入过正式破产（重组）",
+    "had_crisis": "正式破产、流动性紧张（现金缺口）、创业关停 三者任一为真（投资亏损、被骗等 flags.had_crisis 只作文案，不算危机）",
+    "nw_pre_crisis": "第一次危机前一年年末的净资产",
+    "age_crisis": "第一次危机的年龄",
+    "missed_debt_years": "没能按时付清债务本息的年数",
+    "career_path": "65 岁时 occupation.path",
+    "career_peak_level": "一生到过的最高职级（entry < mid < senior < principal）",
+    "ventures_founded": "创业次数",
+    "venture_exit_value": "卖掉公司时到手的最大一笔",
+    "venture_peak_value": "企业权益峰值（经营现金 + 利润 × 4）",
+    "window_hits": "flags.window_hits：抓住的机会数",
+    "missed_windows": "flags.missed_windows：错过的机会数",
+    "origin": "出身",
+    "had_inheritance": "flags.had_inheritance",
+    "family": "65 岁 attrs.family",
+    "health": "65 岁 attrs.health",
+    "had_hard_crisis": "正式破产（重组）或创业关停任一为真",
+    "nw_pre_crisis_real": "第一次危机前一年的净资产 / 当时的 price_index",
+    "comeback_bar": "max(3 × nw_pre_crisis_real, 500000)",
+    "paper_share": "（房产市值 + 企业现金）/ max(nw_final, 1)",
+    "family_plus_health": "family + health"
+  },
+  "endings": [
+    {
+      "id": "E_COMEBACK",
+      "name": "逆风翻盘",
+      "priority": 1,
+      "must_today": true,
+      "tone": "positive",
+      "condition_text": "经历过正式破产（重组）或创业关停，且 65 岁实际净资产 ≥ max(危机前实际净资产 × 3, 50 万)",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "metrics.had_hard_crisis",
+            "value": true
+          },
+          {
+            "op": "gte",
+            "path": "metrics.nw_real_final",
+            "value_path": "metrics.comeback_bar"
+          }
+        ]
+      },
+      "card": {
+        "title": "逆风翻盘",
+        "comment": "摔过最重的一跤，也爬得最高。{age_crisis} 岁那年几乎跌到谷底，65 岁时净资产 {nw_final}。"
+      }
+    },
+    {
+      "id": "E_FOUNDER",
+      "name": "创业冒险家",
+      "priority": 2,
+      "must_today": false,
+      "tone": "positive",
+      "condition_text": "至少创业一次，且（卖掉公司到手 ≥ 50 万，或企业权益峰值 ≥ 150 万）",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "gte",
+            "path": "metrics.ventures_founded",
+            "value": 1
+          },
+          {
+            "op": "or",
+            "conds": [
+              {
+                "op": "gte",
+                "path": "metrics.venture_exit_value",
+                "value": 500000
+              },
+              {
+                "op": "gte",
+                "path": "metrics.venture_peak_value",
+                "value": 1500000
+              }
+            ]
+          }
+        ]
+      },
+      "card": {
+        "title": "创业冒险家",
+        "comment": "你把一个想法做成了一门生意。公司最值钱的时候值 {venture_peak_value}。"
+      }
+    },
+    {
+      "id": "E_SELF_MADE",
+      "name": "白手起家",
+      "priority": 3,
+      "must_today": false,
+      "tone": "positive",
+      "condition_text": "出身寒门、没拿过遗产、没破产，65 岁实际净资产 ≥ 150 万",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "metrics.origin",
+            "value": "humble"
+          },
+          {
+            "op": "eq",
+            "path": "metrics.had_inheritance",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "path": "metrics.had_formal_bankruptcy",
+            "value": false
+          },
+          {
+            "op": "gte",
+            "path": "metrics.nw_real_final",
+            "value": 1500000
+          }
+        ]
+      },
+      "card": {
+        "title": "白手起家",
+        "comment": "起点最低，走得最远。从 {cash_start} 到 {nw_final}，每一步都是自己的。"
+      }
+    },
+    {
+      "id": "E_ERA_RIDER",
+      "name": "时代弄潮儿",
+      "priority": 4,
+      "must_today": false,
+      "tone": "positive",
+      "condition_text": "抓住机会 ≥ 2 次（跳槽成功、创业找到需求、扩张成功、风口、低价房、热门行业押对）",
+      "condition": {
+        "op": "gte",
+        "path": "metrics.window_hits",
+        "value": 2
+      },
+      "card": {
+        "title": "时代弄潮儿",
+        "comment": "风来的时候，你站在了对的位置。一生抓住了 {window_hits} 次机会。"
+      }
+    },
+    {
+      "id": "E_CAREER_PEAK",
+      "name": "职场登峰者",
+      "priority": 5,
+      "must_today": true,
+      "tone": "positive",
+      "condition_text": "65 岁职业是公务/雇员/专业执业之一，且一生到过 principal 职级",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "in",
+            "path": "metrics.career_path",
+            "value": [
+              "public",
+              "employee",
+              "professional"
+            ]
+          },
+          {
+            "op": "eq",
+            "path": "metrics.career_peak_level",
+            "value": "principal"
+          }
+        ]
+      },
+      "card": {
+        "title": "职场登峰者",
+        "comment": "一路从基层做到最高一级。{career_path_name}这条路，你走到了顶。"
+      }
+    },
+    {
+      "id": "E_FREE_LIFE",
+      "name": "自由生活家",
+      "priority": 6,
+      "must_today": false,
+      "tone": "positive",
+      "condition_text": "最后 3 年被动收入 ≥ 生活费的 1.0 倍",
+      "condition": {
+        "op": "gte",
+        "path": "metrics.passive_ratio",
+        "value": 1
+      },
+      "card": {
+        "title": "自由生活家",
+        "comment": "钱开始替你工作。65 岁时，被动收入是生活费的 {passive_ratio} 倍。"
+      }
+    },
+    {
+      "id": "E_COMPOUND",
+      "name": "稳健复利家",
+      "priority": 7,
+      "must_today": true,
+      "tone": "positive",
+      "condition_text": "持有指数 ≥ 15 年、没破产、最大回撤 ≤ 35%、65 岁净资产 ≥ 120 万",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "gte",
+            "path": "metrics.years_index_held",
+            "value": 15
+          },
+          {
+            "op": "eq",
+            "path": "metrics.had_formal_bankruptcy",
+            "value": false
+          },
+          {
+            "op": "lte",
+            "path": "metrics.max_drawdown",
+            "value": 0.35
+          },
+          {
+            "op": "gte",
+            "path": "metrics.nw_real_final",
+            "value": 1200000
+          }
+        ]
+      },
+      "card": {
+        "title": "稳健复利家",
+        "comment": "不追风口，也不躲市场。{years_index_held} 年的耐心换来了复利。"
+      }
+    },
+    {
+      "id": "E_STEWARD",
+      "name": "资产守护者",
+      "priority": 8,
+      "must_today": false,
+      "tone": "positive",
+      "condition_text": "从没逾期、最大回撤 ≤ 15%、家庭 ≥ 55、净资产 ≥ 80 万",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "eq",
+            "path": "metrics.missed_debt_years",
+            "value": 0
+          },
+          {
+            "op": "lte",
+            "path": "metrics.max_drawdown",
+            "value": 0.15
+          },
+          {
+            "op": "gte",
+            "path": "metrics.family",
+            "value": 55
+          },
+          {
+            "op": "gte",
+            "path": "metrics.nw_real_final",
+            "value": 800000
+          }
+        ]
+      },
+      "card": {
+        "title": "资产守护者",
+        "comment": "一辈子没让家人为钱担惊受怕。最大回撤只有 {max_drawdown}。"
+      }
+    },
+    {
+      "id": "E_PAPER_RICH",
+      "name": "纸面富翁",
+      "priority": 9,
+      "must_today": true,
+      "tone": "warning",
+      "condition_text": "实际净资产 ≥ 150 万，且房产加企业占净资产 ≥ 40%（钱大多压在不好变现的地方）",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "gte",
+            "path": "metrics.nw_real_final",
+            "value": 1500000
+          },
+          {
+            "op": "gte",
+            "path": "metrics.paper_share",
+            "value": 0.4
+          }
+        ]
+      },
+      "card": {
+        "title": "纸面富翁",
+        "comment": "账面很富，手头很紧。{nw_final} 的身家里，能随时动用的只占 {liquid_share}。"
+      }
+    },
+    {
+      "id": "E_HIGH_INCOME_TRAP",
+      "name": "高收入困局",
+      "priority": 10,
+      "must_today": true,
+      "tone": "warning",
+      "condition_text": "一生最高年收入（实际）≥ 18 万，但 65 岁现金跑道 < 18 个月",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "gte",
+            "path": "metrics.income_peak_real",
+            "value": 180000
+          },
+          {
+            "op": "lt",
+            "path": "metrics.runway_months",
+            "value": 18
+          }
+        ]
+      },
+      "card": {
+        "title": "高收入困局",
+        "comment": "挣得多，留得少。最高一年收入 {income_peak_real}，65 岁时手头只够撑 {runway_months} 个月。"
+      }
+    },
+    {
+      "id": "E_MISSED_WINDOW",
+      "name": "错过风口",
+      "priority": 11,
+      "must_today": false,
+      "tone": "warning",
+      "condition_text": "错过机会 ≥ 3 次",
+      "condition": {
+        "op": "gte",
+        "path": "metrics.missed_windows",
+        "value": 3
+      },
+      "card": {
+        "title": "错过风口",
+        "comment": "好几次机会从身边经过。你选择了稳，也错过了 {missed_windows} 班车。"
+      }
+    },
+    {
+      "id": "E_ORDINARY_RICH",
+      "name": "平凡而丰盛",
+      "priority": 12,
+      "must_today": true,
+      "tone": "positive",
+      "condition_text": "家庭 + 健康 ≥ 90 且没破产；其他结局都没命中时也用它兜底",
+      "condition": {
+        "op": "and",
+        "conds": [
+          {
+            "op": "gte",
+            "path": "metrics.family_plus_health",
+            "value": 90
+          },
+          {
+            "op": "eq",
+            "path": "metrics.had_formal_bankruptcy",
+            "value": false
+          }
+        ]
+      },
+      "card": {
+        "title": "平凡而丰盛",
+        "comment": "没有惊天动地，但家人在、身体在、日子有余。这一局，你过得踏实。"
+      }
+    }
+  ],
+  "special_early": [
+    {
+      "id": "E_EARLY_HEALTH",
+      "name": "因健康提前收束",
+      "condition_text": "健康 ≤ 5 时在 65 岁前结束本局；照常评 12 个称号，此卡作为额外标签显示在主称号上方",
+      "condition": {
+        "op": "lte",
+        "path": "attrs.health",
+        "value": 5
+      },
+      "ends_life": true,
+      "card": {
+        "title": "提前收束",
+        "comment": "身体先于计划停了下来。{age} 岁，这一局提前结束。"
+      }
+    }
+  ],
+  "card_common": {
+    "fields": [
+      "main_title",
+      "secondary_titles",
+      "comment",
+      "seed",
+      "age_end",
+      "nw_final",
+      "key_decisions_top3"
+    ],
+    "disclaimer": "游戏虚拟数值，不构成投资建议。",
+    "share_line": "我在《这局人生》里活成了「{main_title}」，种子 {seed}，你也来试试？"
+  }
+}

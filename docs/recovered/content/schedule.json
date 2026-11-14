@@ -1,0 +1,101 @@
+{
+  "config_ver": "0.1.0",
+  "economy_config_id": "economy.v1",
+  "decision_budget": {
+    "target_per_life": [
+      12,
+      18
+    ],
+    "soft_cap": 16,
+    "soft_cap_rule": "已做决策数 ≥ soft_cap 后：不再抽 presentation:choice 事件，也不再触发 trigger:conditional / trigger:recurring 的非危机决策；固定决策和危机决策照常。",
+    "count_rule": "计入：带 counts_as_decision 标签、向玩家展示选项的模板（content/decisions.json 全部，以及 events.json 里 presentation:choice 的事件）。不计：presentation:notice 事件（引擎自动选 auto_pick 选项，只弹一张提示卡）。"
+  },
+  "year_loop": [
+    "1. 危机类决策（kind=crisis）：condition 为真就在当年触发，优先级最高。",
+    "2. 固定决策（trigger:fixed）：进入 age_range 的第一年触发；条件不满足时在区间内顺延；区间结束仍不满足就跳过。",
+    "3. 条件 / 周期决策（trigger:conditional、trigger:recurring）：condition 为真且按 special_rules 的概率抽中时触发。",
+    "4. 每年最多 1 个决策（18 岁例外，可 2 个：城市 + 职业）。同年多个候选按 priority 取第一个，其余顺延一年（危机类不顺延）。",
+    "5. 当年没有决策时，按 choice_event_p 抽一个 presentation:choice 事件（计入决策数，一生最多 max_choice_events_per_life 个）。",
+    "6. 再按 notice_event_p 抽一个 presentation:notice 事件（不计决策数）。",
+    "7. 年度结算（implementation-spec §9 的顺序）。"
+  ],
+  "priority": [
+    "EVT_D_RESTRUCTURE",
+    "EVT_D_LIQUIDITY",
+    "EVT_D_VENTURE_CRISIS",
+    "EVT_D_OPEN_CITY",
+    "EVT_D_OPEN_CAREER",
+    "EVT_D_HOUSING",
+    "EVT_D_STARTUP",
+    "EVT_D_STUDY",
+    "EVT_D_INVEST_1",
+    "EVT_D_INVEST_2",
+    "EVT_D_INVEST_3",
+    "EVT_D_INVEST_4",
+    "EVT_D_MIDLIFE",
+    "EVT_D_PRE_RETIRE",
+    "EVT_D_VENTURE_REVIEW",
+    "EVT_D_JOB_SWITCH"
+  ],
+  "special_rules": {
+    "EVT_D_OPEN_CITY": {
+      "rule": "18 岁第 1 个决策（开局卡之后立即出现）",
+      "p": 1
+    },
+    "EVT_D_OPEN_CAREER": {
+      "rule": "18 岁第 2 个决策",
+      "p": 1
+    },
+    "EVT_D_JOB_SWITCH": {
+      "rule": "条件满足后每年按 p 出现；一生最多 2 次；出现后 flags.years_since_switch_offer 归零，每年年结 +1（开局值 4）",
+      "p": 0.25,
+      "max": 2
+    },
+    "EVT_D_STARTUP": {
+      "rule": "26–45 岁、无在营企业、流动资金 ≥ 2.5 万时每年按 p 出现；一生 1 次",
+      "p": 0.07,
+      "max": 1
+    },
+    "EVT_D_VENTURE_REVIEW": {
+      "rule": "创业满 3 年后每 4 年一次；一生最多 3 次",
+      "p": 1,
+      "max": 3
+    },
+    "EVT_D_VENTURE_CRISIS": {
+      "rule": "企业现金储备 < 0 的年份；一生最多 3 次，之后再出现亏空就自动关停",
+      "p": 1,
+      "max": 3
+    },
+    "EVT_D_LIQUIDITY": {
+      "rule": "年结发现现金缺口（自动变现货币基金后仍不足）时，下一年年初触发；一生最多 3 次，之后自动借款",
+      "p": 1,
+      "max": 3
+    },
+    "EVT_D_RESTRUCTURE": {
+      "rule": "flags.formal_bankruptcy_pending 为真的下一年年初；一生最多 2 次",
+      "p": 1,
+      "max": 2
+    }
+  },
+  "choice_event_p": 0.05,
+  "notice_event_p": 0.3,
+  "max_choice_events_per_life": 4,
+  "opportunity_density_applies_to": "opportunity=true 的模板权重 × 城市 opportunity_density",
+  "bankruptcy_rules": {
+    "liquidity_crunch": "年结时现金为负：先按顺序变现 deposit → money_fund → index_fund → sector_fund（基金折价 5%）补到 0；仍不足就把缺口记为当年 crunch，置 flags.liquidity_crunch_this_year，并自动借一笔 5 年期过桥消费贷把现金补到 0（F，基准 + 6%），下一年年初弹出 EVT_D_LIQUIDITY 让玩家处理。",
+    "idle_cash_interest": "年末现金超过 6 个月生活费的部分，按存款利率（deposit.mu + 0.15 × 通胀）计息，记 I / investment_distribution。",
+    "formal_bankruptcy": "当年出现 crunch，且个人非房贷负债 ≥ 12 个月生活费，并满足任一：(a) 上一年也出现 crunch；(b) 个人总负债 > 2 ×（折价后可变现资产 + 当年税后稳定收入）。置 flags.formal_bankruptcy_pending 与 flags.had_formal_bankruptcy。（小额缺口只算流动性紧张，不进破产）",
+    "restructure_floor": "重组后现金 ≥ max(12000, 3 个月节俭生活费)；不足部分从被减免的债务里留出，不得凭空生成。",
+    "no_new_debt": "flags.no_new_debt_years > 0 时 flags.no_new_debt = true，每年减 1。"
+  },
+  "intel_policy": {
+    "rule": "付费情报只改变玩家看到的信息（概率区间、隐藏风险、行业展望），不改变真实结果分布。情报的展示噪声只从 intel 随机流取；结果抽取只从 personal / business 流取，买不买情报不影响这两条流的抽数。",
+    "p_band_format": "真实把握 ± 10 个百分点，取整到 5%，例如「45%–65%」；未买情报时不显示任何概率",
+    "fee_ledger": {
+      "account": "E",
+      "sub": "intel_fee"
+    },
+    "fee_rule": "clamp(rate × stakes, min, max)；stakes 的取值见 README「情报费用的 stakes」"
+  },
+  "auto_policy_for_mc": "每个决策在可用选项里随机选，strategy_hints.risk_exposure=high 的选项权重 0.6、其余 1.0（压力测试另跑一次完全均匀随机）；有情报可买时 50% 概率购买；notice 事件取 auto_pick 选项"
+}
