@@ -22,6 +22,12 @@ node tools/bundle.cjs          # 打包到 preview/game.bundle.js
 
 `preview/wx-shim.js` 只模拟本游戏用到的 wx API，真机行为以开发者工具为准。
 
+生成可分享的单文件网页试玩版（手机 / 电脑浏览器都能玩，无微信分享和广告）：
+
+```bash
+node tools/build-demo.cjs      # → dist/demo.html
+```
+
 ## 目录
 
 | 路径 | 内容 |
