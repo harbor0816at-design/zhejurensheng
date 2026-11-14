@@ -2,8 +2,12 @@
 (function () {
   const params = new URLSearchParams(location.search);
   const DEMO = !!window.__DEMO;   // 网页 demo：无胶囊、居中成手机宽度
-  const W = DEMO ? Math.min(window.innerWidth, 430) : window.innerWidth;
-  const H = DEMO ? Math.max(560, Math.min(window.innerHeight, 940)) : window.innerHeight;
+  const dims = () => {
+    const iw = window.innerWidth || document.documentElement.clientWidth || 390;
+    const ih = window.innerHeight || document.documentElement.clientHeight || 760;
+    return DEMO ? [Math.max(300, Math.min(iw, 430)), Math.max(480, Math.min(ih, 940))] : [iw, ih];
+  };
+  let [W, H] = dims();
   const DPR = Math.min(3, window.devicePixelRatio || 2);
   const STATUS = DEMO ? 6 : Number(params.get('status') || 47);
   const SAFE_BOTTOM = DEMO ? 6 : Number(params.get('safebottom') || 34);
@@ -50,6 +54,15 @@
       e.preventDefault();
     }, { passive: false });
   }
+
+  // 网页窗口大小变化（预览面板晚撑开、转屏）时同步画布
+  window.addEventListener('resize', () => {
+    const [w, h] = dims();
+    if (w === W && h === H) return;
+    W = w; H = h;
+    if (screenEl) { screenEl.style.width = W + 'px'; screenEl.style.height = H + 'px'; }
+    if (window.__app && window.__app.r) window.__app.r.resize(W, H);
+  });
 
   window.wx = {
     createCanvas: makeCanvas,

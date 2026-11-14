@@ -380,6 +380,15 @@ class Renderer {
     requestAnimationFrame(this.loop);
   }
 
+  resize(w, h) {
+    if (!w || !h || (w === this.W && h === this.H)) return;
+    this.W = w; this.H = h; this.sys.w = w; this.sys.h = h;
+    this.canvas.width = Math.round(w * this.dpr);
+    this.canvas.height = Math.round(h * this.dpr);
+    this.m.wrapCache.clear();
+    this.invalidate();
+  }
+
   setPage(page, opts) {
     this.page = page;
     if (!opts || !opts.keepScroll) this.scrollY = 0;
@@ -484,7 +493,7 @@ class Renderer {
   drawPressed(ctx, hits, layer) {
     const t = this.touch;
     if (!t || t.moved || !t.hit || t.layer !== layer) return;
-    const h = t.hit;
+    const h = hits.find((x) => (t.hit.id ? x.id === t.hit.id : Math.abs(x.x - t.hit.x) < 1 && Math.abs(x.y - t.hit.y) < 1)) || t.hit;
     ctx.fillStyle = 'rgba(15,23,42,0.10)';
     roundRect(ctx, h.x, h.y, h.w, h.h, h.r || 8); ctx.fill();
   }
@@ -560,8 +569,10 @@ class Renderer {
       if (!cancel && !t.moved && t.hit && t.hit.onTap) {
         const p = pt(e);
         const f = this.findHit(p.x, p.y);
-        if (f && f.hit === t.hit) {
-          try { t.hit.onTap(); } catch (err) { console.error(err); this.showToast('出错了：' + (err && err.message)); }
+        // 按下后界面会重排，命中对象会重新生成：按 id 或位置判断是不是同一个按钮
+        const same = (a, b) => (a.id && b.id ? a.id === b.id : Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1 && Math.abs(a.w - b.w) < 1 && Math.abs(a.h - b.h) < 1);
+        if (f && f.layer === t.layer && same(f.hit, t.hit) && f.hit.onTap) {
+          try { f.hit.onTap(); } catch (err) { console.error(err); this.showToast('出错了：' + (err && err.message)); }
         }
       } else if (t.moved && Date.now() - t.lt < 80 && Math.abs(t.vel) > 0.1) {
         this.vel = t.vel; this.anim = true; this.lastT = Date.now();
