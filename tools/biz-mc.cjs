@@ -43,12 +43,14 @@ const res = {};
 let worst = 0;
 for (const pol of Object.keys(POLICIES)) {
   const vals = []; let restr = 0; const ends = {}; let cases = 0;
-  const byInd = {};
+  const byInd = {}; const byFd = {}; const byY = {}; let evs = 0;
   for (let i = 0; i < N; i++) {
     const rnd = mulberry(i * 7919 + pol.length);
-    const ind = D.INDUSTRIES[i % 3].id;
-    const hq = ['US', 'CN', 'DE', 'JP', 'IN'][Math.floor(i / 3) % 5];
-    const L = BizLife.create(`MC-${pol}-${i}`, { industry: ind, hq });
+    const ind = D.INDUSTRIES[i % D.INDUSTRIES.length].id;
+    const hq = D.COUNTRIES[Math.floor(i / 5) % 9].id;
+    const founder = D.FOUNDERS[Math.floor(i / 45) % D.FOUNDERS.length].id;
+    const startYear = D.START_YEARS[Math.floor(i / 7) % 3].year;
+    const L = BizLife.create(`MC-${pol}-${i}`, { industry: ind, hq, founder, startYear });
     let guard = 0;
     while (!L.s.ended && guard++ < 60) {
       if (L.s.caseId) { const v = L.caseView(); L.chooseCase(v.options[Math.floor(rnd() * v.options.length)].id); }
@@ -57,13 +59,17 @@ for (const pol of Object.keys(POLICIES)) {
       worst = Math.max(worst, Math.abs(L.s.report.check));
     }
     vals.push(L.s.valuation); if (L.s.restructures) restr++;
-    cases += L.s.caseLog.length;
+    cases += L.s.caseLog.length; evs += L.s.caseLog.filter((c) => c.event).length;
+    (byFd[founder] = byFd[founder] || []).push(L.s.valuation); (byY[startYear] = byY[startYear] || []).push(L.s.valuation);
     const p = L.s.endings[0].name; ends[p] = (ends[p] || 0) + 1;
     (byInd[ind] = byInd[ind] || []).push(L.s.valuation);
   }
   const q = (a, p) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(p * b.length))]; };
   const fmt = (v) => (v >= 1e9 ? (v / 1e9).toFixed(1) + 'B' : (v / 1e6).toFixed(0) + 'M');
   console.log(`\n== ${pol}  估值 P10/P50/P90/max = ${fmt(q(vals, 0.1))} / ${fmt(q(vals, 0.5))} / ${fmt(q(vals, 0.9))} / ${fmt(Math.max(...vals))}  重组 ${(restr / N * 100).toFixed(1)}%  每局案例 ${(cases / N).toFixed(1)}`);
+  console.log(`   每局随机事件 ${(evs / N).toFixed(1)}`);
+  console.log('   分出身 P50：' + Object.entries(byFd).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
+  console.log('   分年代 P50：' + Object.entries(byY).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
   console.log('   分行业 P50：' + Object.entries(byInd).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
   console.log('   结局：' + Object.entries(ends).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${(v / N * 100).toFixed(0)}%`).join(' | '));
 }

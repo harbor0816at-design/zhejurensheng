@@ -28,7 +28,7 @@ function make(life) {
     }
     ctx.textAlign = 'center';
     ctx.fillStyle = '#93c5fd'; ctx.font = T.font(22, 600);
-    ctx.fillText(`${s.name} · ${life.ind.name} · 1995–2024`, W / 2, 58);
+    ctx.fillText(`${s.name} · ${life.ind.name} · ${s.startYear || 1995}–2024`, W / 2, 58);
     ctx.fillStyle = '#ffffff'; ctx.font = T.font(62, 800);
     ctx.fillText(primary ? primary.name : '还在经营中', W / 2, 140);
     const info = `估值 ${F.usd(s.valuation)} · 种子 ${s.seed}`;

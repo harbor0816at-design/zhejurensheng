@@ -27,7 +27,7 @@ function casePage(app) {
       const v = life.caseView();
       if (!v) return;
       status(f, life, { noAp: true });
-      folder(f, '案例时刻', v.title, v.era);
+      folder(f, v.event ? '突发事件' : '案例时刻', v.title, v.era);
       f.card({}, (c) => {
         c.text(v.situation, { size: 15, color: T.c.body, lh: 1.7 });
       });
@@ -60,14 +60,14 @@ function revealPage(app) {
         if (Math.abs(r.cashDelta) >= 1) c.row('这次抉择的现金变化', F.usd(r.cashDelta, { sign: true }), { valueColor: r.cashDelta < 0 ? T.c.neg : T.c.pos, size: 13 });
         c.text('部分影响会在之后几年慢慢体现在份额和利润上。', { size: 11, color: T.c.faint, lh: 1.6 });
       });
-      f.card({ bg: '#fffbeb' }, (c) => {
+      if (r.history) f.card({ bg: '#fffbeb' }, (c) => {
         const y = c.y;
         icon(c.push.bind(c), 'book', c.x, y + 1, 18, '#b45309');
         c.text('真实历史', { size: 14, weight: 700, color: '#92400e', indent: 26, lh: 1.5 });
         c.gap(4);
         c.text(r.history, { size: 14, color: '#451a03', lh: 1.7 });
       });
-      f.card({ bg: '#f5f3ff' }, (c) => {
+      if (r.theory) f.card({ bg: '#f5f3ff' }, (c) => {
         const y = c.y;
         icon(c.push.bind(c), 'bulb', c.x, y + 1, 18, '#6d28d9');
         c.text(`理论视角 · ${r.theory.name}`, { size: 14, weight: 700, color: '#5b21b6', indent: 26, lh: 1.5 });

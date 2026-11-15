@@ -20,7 +20,7 @@ function drawTile(f, life, cid, x, y, w, h, app) {
   if (cv.isHQ) icon(push, 'hq', x + w - 22, y + 10, 13, '#f59e0b');
   // 增长
   const g = cv.growth;
-  const showG = life.s.year > 1995;
+  const showG = life.s.year > (life.s.startYear || 1995);
   const gc = g >= 0.03 ? T.c.pos : g <= -0.01 ? T.c.neg : (entered ? T.c.muted : T.c.onDarkMuted);
   if (showG) push({ t: 'text', x: x + (cv.isHQ ? w - 26 : w - 10), y: y + 24, s: `${g >= 0 ? '▲' : '▼'}${Math.abs(g * 100).toFixed(0)}%`, font: T.font(11, 600), color: entered ? gc : (g >= 0.03 ? '#4ade80' : g <= -0.01 ? '#f87171' : T.c.onDarkMuted), align: 'right' });
   // 布局图标（三格）

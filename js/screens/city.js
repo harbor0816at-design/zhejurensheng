@@ -52,7 +52,7 @@ function cityPage(app) {
 
   const surface = {
     draw(ctx, rect) {
-      if (!ui.camInit) { ui.cam.z = rect.w < 500 ? 1.0 : 1.3; const f = s.focus || [N / 2, N / 2]; R.centerOn(ui.cam, rect, f[0], f[1]); ui.camInit = true; }
+      if (!ui.camInit) { ui.cam.z = Math.max(0.8, Math.min(1.8, rect.w / (R.TILE * 15))); const f = s.focus || [N / 2, N / 2]; R.centerOn(ui.cam, rect, f[0], f[1]); ui.camInit = true; }
       ui.rect = rect;
       R.drawCity(ctx, sim, ui.cam, rect, { overlay: ui.overlay, preview: ui.preview, sel: ui.sel, t: Date.now() });
       btns = [];
@@ -79,7 +79,7 @@ function cityPage(app) {
         const y = rect.y + 10 + row * (size + gap);
         ctx.fillStyle = it.on ? '#ffffff' : 'rgba(15,23,42,0.72)'; roundRect(ctx, x, y, size, size, 10); ctx.fill();
         const tmp = []; icon((c) => tmp.push(c), it.icon, x + 8, y + 8, 20, it.on ? '#0f172a' : '#e2e8f0');
-        drawPrims(ctx, tmp);
+        R.prims(ctx, tmp);
         btns.push({ id: it.id, x, y, w: size, h: size });
       });
       if (ui.overlay) {
@@ -91,7 +91,7 @@ function cityPage(app) {
       // 剧本目标
       const g = sim.currentGoal();
       if (g) {
-        const txt = `目标：${g.text}（现在 ${group(st.pop)}）`;
+        const txt = `目标：${sim.goalText(g)}（现在 ${sim.goalProgress(g)}）`;
         ctx.font = T.font(12, 600); const w = Math.min(rect.w - 20, ctx.measureText(txt).width + 22);
         ctx.fillStyle = 'rgba(250,204,21,0.92)'; roundRect(ctx, rect.x + 10, rect.y + 82, w, 26, 13); ctx.fill();
         ctx.fillStyle = '#422006'; ctx.textAlign = 'left'; ctx.fillText(txt, rect.x + 21, rect.y + 99, w - 20);
@@ -117,7 +117,7 @@ function cityPage(app) {
       if (g.mode === 'pinch' && pts.length >= 2) {
         const [p, q] = pts;
         const d = Math.hypot(p.x - q.x, p.y - q.y);
-        const z = Math.max(0.5, Math.min(2.6, g.z0 * d / Math.max(1, g.d0)));
+        const z = Math.max(0.5, Math.min(3, g.z0 * d / Math.max(1, g.d0)));
         const mx = (p.x + q.x) / 2; const my = (p.y + q.y) / 2;
         const r = z / g.z0;
         ui.cam.z = z;
@@ -149,7 +149,7 @@ function cityPage(app) {
       }
     },
     wheel(dy, x, y) {
-      const z0 = ui.cam.z; const z = Math.max(0.5, Math.min(2.6, z0 * (dy > 0 ? 0.9 : 1.1)));
+      const z0 = ui.cam.z; const z = Math.max(0.5, Math.min(3, z0 * (dy > 0 ? 0.9 : 1.1)));
       const r = z / z0;
       ui.cam.x = x - ui.rect.x - (x - ui.rect.x - ui.cam.x) * r;
       ui.cam.y = y - ui.rect.y - (y - ui.rect.y - ui.cam.y) * r;
@@ -157,9 +157,9 @@ function cityPage(app) {
     }
   };
   function clampCam() {
-    const rc = ui.rect; const z = ui.cam.z;
-    const minX = rc.w / 2 - N * R.A * z; const maxX = rc.w / 2 + N * R.A * z;
-    const minY = rc.h / 2 - 2 * N * R.B * z; const maxY = rc.h / 2;
+    const rc = ui.rect; const S = R.tileSize(ui.cam);
+    const minX = rc.w / 2 - N * S; const maxX = rc.w / 2;
+    const minY = rc.h / 2 - N * S; const maxY = rc.h / 2;
     ui.cam.x = Math.max(minX, Math.min(maxX, ui.cam.x)); ui.cam.y = Math.max(minY, Math.min(maxY, ui.cam.y));
   }
   function updatePreview(cell) {
@@ -199,8 +199,8 @@ function cityPage(app) {
         }
       } else {
         const sv = svcOf(ui.tool);
-        line1 = sv ? `${sv.name}：建造 ${money(sv.cost)}，每月维护 ${money(sv.upkeep)}` : tool.hint;
-        line2 = sv ? `${sv.desc}${sv.radius ? `，覆盖半径 ${sv.radius} 格` : ''}；要紧挨道路，点一下放置` : (ui.tool === 'pan' ? `电 ${Math.round(st.powerUse)}/${st.powerCap} · 水 ${Math.round(st.waterUse)}/${st.waterCap} · 失业 ${group(st.unemployed)}` : '');
+        line1 = sv ? `${sv.name}：建造 ${money(sim.serviceCost(+Object.keys(SERVICES).find((k) => SERVICES[k] === sv)))}，每月维护 ${money(sv.upkeep)}` : tool.hint;
+        line2 = sv ? `${sv.desc}${sv.radius ? `，覆盖半径 ${sv.radius} 格` : ''}；要紧挨道路，点一下放置` : (ui.tool === 'pan' ? `电 ${Math.round(st.powerUse)}/${st.powerCap} · 水 ${Math.round(st.waterUse)}/${st.waterCap} · 失业 ${group(st.unemployed)}${st.oil ? ` · 石油收入 +${group(st.oil)}/月` : ''}` : '');
       }
       f.push({ t: 'text', x: f.x + 10, y: y + 17, s: line1, font: T.font(12, 600), color: '#fff' });
       f.push({ t: 'text', x: f.x + 10, y: y + 33, s: line2, font: T.font(11), color: c2 });
@@ -313,11 +313,12 @@ function endPage(app) {
     header: cityHeader(app),
     body(f) {
       f.card({ pad: 20 }, (c) => {
-        c.text(`${sim.s.name} · 1980 → 2020`, { size: 12, weight: 600, color: T.c.accent, align: 'center', lh: 1.6 });
-        c.text('★'.repeat(r.stars) + '☆'.repeat(5 - r.stars), { size: 34, weight: 800, color: '#f59e0b', align: 'center', lh: 1.4 });
-        c.text(`你把渔村建成了「${r.title}」`, { size: 18, weight: 700, color: T.c.ink, align: 'center', lh: 1.5 });
+        const sc = sim.scenario;
+        c.text(`${sc.name} · ${sc.start} → ${sc.end}`, { size: 12, weight: 600, color: T.c.accent, align: 'center', lh: 1.6 });
+        c.text('★'.repeat(r.stars) + '☆'.repeat(r.total - r.stars), { size: 34, weight: 800, color: '#f59e0b', align: 'center', lh: 1.4 });
+        c.text(`${sc.place}，如今是「${r.title}」`, { size: 17, weight: 700, color: T.c.ink, align: 'center', lh: 1.5 });
         c.gap(8);
-        c.tiles([{ k: '人口', v: group(r.pop) }, { k: '最高人口', v: group(r.maxPop) }, { k: '财政', v: money(r.money) }, { k: '住宅平均地价', v: String(r.happy) }], 2, { after: 0 });
+        c.tiles([{ k: '人口', v: group(r.pop) }, { k: '最高人口', v: group(r.maxPop) }, { k: '财政', v: money(r.money) }, { k: '摩天楼', v: `${r.sky} 座` }], 2, { after: 0 });
       });
       f.card({}, (c) => {
         c.sectionTitle('剧本目标');
@@ -325,7 +326,7 @@ function endPage(app) {
       });
       f.card({}, (c) => {
         c.button('继续自由建设这座城市', () => app.cityFreePlay(), { id: 'free-play' });
-        c.button('重新开始剧本', () => app.startCity('shenzhen'), { kind: 'secondary', id: 'restart-city' });
+        c.button('重新开始这个剧本', () => app.startCityScenario(sim.s.scenario), { kind: 'secondary', id: 'restart-city' });
         c.button('回到首页', () => app.goHome(), { kind: 'link', h: 34, size: 13, after: 0, id: 'home' });
       });
     }

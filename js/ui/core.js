@@ -490,7 +490,7 @@ class Renderer {
         const lines = this.m.wrap(this.toast.msg, f, this.W - 100);
         const tw = Math.min(this.W - 60, Math.max(...lines.map((l) => this.m.width(l, f))) + 32);
         const th = lines.length * 21 + 20;
-        const tx = (this.W - tw) / 2; const ty = this.page && this.page.toastTop && this.surfaceRect ? this.surfaceRect.y + 120 : this.H * 0.42;
+        const tx = (this.W - tw) / 2; const ty = this.page && this.page.toastTop && this.surfaceRect ? this.surfaceRect.y + this.surfaceRect.h - th - 14 : this.H * 0.42;
         ctx.fillStyle = 'rgba(15,23,42,0.92)'; roundRect(ctx, tx, ty, tw, th, 12); ctx.fill();
         ctx.font = f; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
         lines.forEach((l, i) => ctx.fillText(l, this.W / 2, ty + 25 + i * 21));

@@ -2,10 +2,13 @@
 // 用法：node tools/city-auto.cjs [sandbox|shenzhen] [种子]
 const path = require('path');
 const { CitySim, N, K, idx } = require(path.resolve(__dirname, '../js/city/sim.js'));
-const mode = process.argv[2] || 'sandbox';
-const sim = CitySim.create({ mode, seed: process.argv[3] || 'AUTO-1' });
+const arg = process.argv[2] || 'river';
+const { SC, M } = require(path.resolve(__dirname, '../js/city/sim.js'));
+const isSc = SC.SCENARIOS.some((x) => x.id === arg);
+const mode = isSc ? 'shenzhen' : 'sandbox';
+const sim = isSc ? CitySim.create({ mode: 'scenario', scenario: arg }) : CitySim.create({ mode: 'sandbox', map: arg, seed: process.argv[3] || 'AUTO-1', challenges: (process.argv[4] || '').split(',').filter(Boolean) });
 const s = sim.s;
-const free = (x, y) => x >= 0 && y >= 0 && x < N && y < N && s.kind[idx(x, y)] === K.NONE && s.ter[idx(x, y)] !== 1;
+const free = (x, y) => x >= 0 && y >= 0 && x < N && y < N && s.kind[idx(x, y)] === K.NONE && s.ter[idx(x, y)] !== 1 && s.ter[idx(x, y)] !== 4;
 // 规划：每 5 格一条路的网格，逐步向外扩
 const cx = s.focus ? s.focus[0] : 16; const cy = s.focus ? s.focus[1] : 16;
 let ring = 0;
@@ -36,7 +39,7 @@ function placeSvc(tool, far) {
   return false;
 }
 expand(); placeSvc('power', true); placeSvc('water', true);
-const years = mode === 'shenzhen' ? 41 : 30;
+const years = isSc ? (sim.s.endYear - sim.s.startYear + 1) : 30;
 for (let m = 0; m < years * 12 && !s.ended; m++) {
   const st = sim.st;
   if (st.powerUse > st.powerCap * 0.8 && s.money > 7000) placeSvc('power', true);
@@ -54,12 +57,12 @@ for (let m = 0; m < years * 12 && !s.ended; m++) {
     const empty = s.kind.filter((k, i) => k >= K.R && k <= K.I && s.lv[i] === 0).length;
     if (empty < zones * 0.2 && s.money > 6000 && ring < (process.env.RINGS ? +process.env.RINGS : 4)) expand();
   }
-  sim.step();
+  sim.step(); if (s.pendingEvent) s.pendingEvent = null;
   if (m % 24 === 23 || s.ended) {
     const st2 = sim.st;
     console.log(`${sim.year}  人口 ${st2.pop}  岗位 C${st2.jobsC}/I${st2.jobsI}  钱 ${Math.round(s.money)}  收 ${st2.income} 支 ${st2.upkeep}  需求 R${st2.dem.R.toFixed(2)} C${st2.dem.C.toFixed(2)} I${st2.dem.I.toFixed(2)}  ${st2.title}  贷款${s.loans}  地价${st2.happy}`);
   }
 }
-if (mode === 'shenzhen') console.log('目标', JSON.stringify(sim.result().goals.map((g) => g.met)));
+if (isSc) { const r = sim.result(); console.log('目标', r.stars + '/' + r.total, JSON.stringify(r.goals.map((g) => g.text + (g.met ? ' ✓' : ' ✗')))); }
 const lv = [0, 0, 0, 0, 0]; s.lv.forEach((l, i) => { if (s.kind[i] >= K.R && s.kind[i] <= K.I) lv[l]++; });
 console.log('楼层分布 0-4：', lv.join(' / '));

@@ -1,9 +1,13 @@
 // 全球商业版引擎：确定性、可复现、与界面无关。
 // 一回合 = 一年：beginYear（新闻、案例）→ 玩家行动（place / 战略 / 融资）→ endYear（结算、年报）。
 const D = require('./data.js');
-const { CASES } = require('./cases.js');
+const { CASES: CASES1 } = require('./cases.js');
+const { CASES2 } = require('./cases2.js');
+const { BIZ_EVENTS } = require('./events.js');
+const CASES = CASES1.concat(CASES2);
+const findCard = (id) => CASES.find((c) => c.id === id) || BIZ_EVENTS.find((c) => c.id === id);
 
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 const LEVELS = ['未进入', '出口', '分公司', '工厂'];
 const LEVELS_SW = ['未进入', '线上销售', '分公司', '数据中心'];
 const PW = [0, 0.35, 1.0, 1.25];                // 布局等级对吸引力的权重
@@ -12,8 +16,8 @@ const FIXED = [0, 0.15e6, 1.5e6, 5.0e6];         // 每国固定费用（按当�
 const CAPEX = [0, 0.4e6, 2.5e6, 12e6];          // 升级到该等级的一次性投入
 const RND = { low: { pct: 0.02, min: 0.3e6, dq: -1 }, mid: { pct: 0.05, min: 1.0e6, dq: 2 }, high: { pct: 0.1, min: 2.5e6, dq: 5 } };
 const PRICE = { low: { attract: 1.25, mult: 0.88, brand: -0.5 }, mid: { attract: 1, mult: 1, brand: 0 }, premium: { attract: 0.8, mult: 1.15, brand: 1 } };
-const DRIFT = { electronics: 2.5, beverage: 0.6, software: 2.0 };
-const PS = { electronics: 0.3, beverage: 0.6, software: 1.0 };
+const DRIFT = { electronics: 2.5, beverage: 0.6, software: 2.0, auto: 1.6, apparel: 1.2 };
+const PS = { electronics: 0.3, beverage: 0.6, software: 1.0, auto: 0.3, apparel: 0.7 };
 const TAX = 0.22;
 
 // ---------------- 随机 ----------------
@@ -49,11 +53,14 @@ class BizLife {
     opts = opts || {};
     const ind = industry(opts.industry || 'electronics');
     const hq = opts.hq || 'US';
+    const startYear = D.START_YEARS.some((x) => x.year === opts.startYear) ? opts.startYear : D.START_YEAR;
+    const fd = D.FOUNDERS.find((x) => x.id === opts.founder) || D.FOUNDERS[0];
+    const scale = 1 + 0.06 * (startYear - D.START_YEAR); // 晚开局的起步资金按经济规模放大
     const s = {
-      v: VERSION, seed: String(seed), industry: ind.id, hq,
+      v: VERSION, seed: String(seed), industry: ind.id, hq, startYear, founder: fd.id,
       name: opts.name || ind.names[0],
-      year: D.START_YEAR, cash: 5e6, debt: 0, quality: 45, rnd: 'mid', price: 'mid',
-      ownership: 1, lossCarry: 0, restructures: 0, ended: false,
+      year: startYear, cash: 5e6 * fd.cash * scale, debt: (fd.debt || 0) * scale, quality: fd.quality, rnd: fd.rnd || 'mid', price: 'mid',
+      ownership: fd.ownership || 1, lossCarry: 0, restructures: 0, ended: false,
       countries: {}, mods: [], flags: {}, fx: {},
       ap: 0, apMax: 3, actions: [], flows: null,
       caseId: null, caseCtx: null, caseResult: null, caseLog: [], lastCaseYear: 0,
@@ -70,7 +77,8 @@ class BizLife {
       s.fx[c.id] = 1;
     }
     const home = s.countries[hq];
-    home.level = 2; home.brand = 15; home.share = 0;
+    home.level = fd.homeLevel || 2; home.brand = fd.brand; home.share = 0;
+    if (home.level >= 3 && !ind.physical) home.level = 3;
     const life = new BizLife(s);
     const A0 = life.attract(hq, s.year);
     home.share = 0.6 * A0 / (A0 + ind.comp);
@@ -110,7 +118,8 @@ class BizLife {
   headline(year) { return eventOf(year || this.s.year).headline; }
   baseRate(year) { return D.interp(D.BASE_RATE, year); }
   loanRate() { return this.baseRate(this.s.year) + 0.035; }
-  creditLimit() { return Math.max(4e6, 2.5 * Math.max(0, this.s.lastEBITDA)); }
+  creditMult() { const fd = D.FOUNDERS.find((x) => x.id === this.s.founder); return (fd && fd.credit) || 1; }
+  creditLimit() { return this.creditMult() * Math.max(4e6, 2.5 * Math.max(0, this.s.lastEBITDA)); }
 
   modMult(cid, year) {
     let m = 1;
@@ -128,7 +137,7 @@ class BizLife {
     const ind = this.ind;
     const ev = eventOf(year);
     if (!ind.physical) return { cost: this.s.countries[cid].level >= 3 ? 0.92 : 1, from: null };
-    const ref = ind.id === 'electronics' ? 0.7 : 0.8;
+    const ref = ind.id === 'electronics' || ind.id === 'apparel' ? 0.7 : 0.8;
     let best = null;
     for (const f of D.COUNTRIES) {
       if (this.s.countries[f.id].level < 3) continue;
@@ -138,6 +147,12 @@ class BizLife {
     // 没有自有工厂可用：代工
     let contract;
     if (ind.id === 'electronics') contract = { cost: (0.55 + 0.25 * this.costIdx('CN', year)) * pick(ev.cost, 'CN') * (1 + this.tariff('CN', cid, year)) + ind.importCost, from: '代工' };
+    else if (ind.id === 'apparel') {
+      for (const x of ['CN', 'VN', 'IN']) {
+        const cc = (0.5 + 0.3 * this.costIdx(x, year)) * pick(ev.cost, x) * (1 + this.tariff(x, cid, year)) + ind.importCost;
+        if (!contract || cc < contract.cost) contract = { cost: cc, from: '代工' };
+      }
+    } else if (ind.id === 'auto') contract = { cost: 1.18 * (0.5 + 0.5 * this.costIdx(cid, year)) * pick(ev.cost, cid), from: '代工' };
     else contract = { cost: 1.08 * (0.5 + 0.5 * this.costIdx(cid, year)) * pick(ev.cost, cid), from: '代工' };
     if (!best || contract.cost < best.cost) best = contract;
     return { cost: best.cost / ref, from: best.from };
@@ -161,6 +176,8 @@ class BizLife {
     s.flows = { capex: 0, caseCash: 0, financing: 0, refunds: 0, cashStart: s.cash, debtStart: s.debt };
     for (const c of D.COUNTRIES) s.countries[c.id].campaign = false;
     s.apMax = 3 + (s.lastRev >= 1e9 ? 1 : 0) + (s.lastRev >= 1e10 ? 1 : 0);
+    const fd = D.FOUNDERS.find((x) => x.id === s.founder);
+    if (fd && fd.apPenalty && s.year < (s.startYear || D.START_YEAR) + fd.apPenalty) s.apMax -= 1;
     s.ap = s.apMax;
     s.caseResult = null;
     this.triggerCase();
@@ -175,28 +192,39 @@ class BizLife {
     const forced = elig.find((c) => c.years[1] === y);
     let chosen = forced || null;
     if (!chosen && y - s.lastCaseYear >= 2 && this.rand('case') < 0.55) chosen = elig[0];
-    if (!chosen) return;
+    if (!chosen) { this.triggerEvent(done); return; }
     s.caseId = chosen.id;
-    s.caseCtx = chosen.ctx ? chosen.ctx(s) : {};
+    s.caseCtx = chosen.ctx ? chosen.ctx(s, () => this.rand('event')) : {};
     s.lastCaseYear = y;
+  }
+
+  // 没有历史案例的年份，按种子随机抛出一张经营事件卡（每局每张最多一次）
+  triggerEvent(done) {
+    const s = this.s; const y = s.year;
+    if (y === (s.startYear || D.START_YEAR) || this.rand('event') >= 0.5) return;
+    const elig = BIZ_EVENTS.filter((c) => !done.has(c.id) && y >= c.years[0] && y <= c.years[1] && (!c.industry || c.industry === s.industry) && (!c.cond || c.cond(s)));
+    if (!elig.length) return;
+    const chosen = elig[Math.floor(this.rand('event') * elig.length) % elig.length];
+    s.caseId = chosen.id;
+    s.caseCtx = chosen.ctx ? chosen.ctx(s, () => this.rand('event')) : {};
   }
 
   caseView() {
     const s = this.s;
     if (!s.caseId) return null;
-    const c = CASES.find((x) => x.id === s.caseId);
+    const c = findCard(s.caseId);
     const fill = (t) => String(t || '').replace(/\{(\w+)\}/g, (m, k) => {
       const v = s.caseCtx && s.caseCtx[k];
       if (v === undefined) return k === 'company' ? s.name : m;
       const cc = country(v); return cc ? cc.name : v;
     });
-    return { id: c.id, title: c.title, era: c.era, situation: fill(c.situation), options: c.options.map((o) => ({ id: o.id, text: fill(o.text), hint: fill(o.hint) })), theoryName: c.theory.name };
+    return { id: c.id, title: c.title, era: c.era, event: c.id.startsWith('X_'), situation: fill(c.situation), options: c.options.map((o) => ({ id: o.id, text: fill(o.text), hint: fill(o.hint) })), theoryName: c.theory ? c.theory.name : '' };
   }
 
   chooseCase(optId) {
     const s = this.s;
     if (!s.caseId) return null;
-    const c = CASES.find((x) => x.id === s.caseId);
+    const c = findCard(s.caseId);
     const opt = c.options.find((o) => o.id === optId);
     if (!opt) return null;
     let r = this.rand('case'); let out = opt.outcomes[opt.outcomes.length - 1];
@@ -210,7 +238,7 @@ class BizLife {
     const view = this.caseView();
     const entry = {
       id: c.id, year: s.year, title: c.title, era: c.era, option: view.options.find((o) => o.id === optId).text,
-      outcome: title, outcomeText: text, history: c.history, theory: c.theory, cashDelta: s.cash - before.cash
+      outcome: title, outcomeText: text, history: c.history || '', theory: c.theory || null, event: c.id.startsWith('X_'), cashDelta: s.cash - before.cash
     };
     s.caseLog.push(entry);
     s.caseResult = entry;
@@ -271,7 +299,7 @@ class BizLife {
 
   // ---------------- 玩家行动 ----------------
   capexFor(cid, level) {
-    const base = !this.ind.physical && level === 3 ? 6e6 : CAPEX[level];
+    const base = !this.ind.physical && level === 3 ? 6e6 : CAPEX[level] * (level === 3 && this.ind.factoryMult ? this.ind.factoryMult : 1);
     return base * Math.max(0.5, this.costIdx(cid, this.s.year)) * (1 + 0.02 * (this.s.year - D.START_YEAR));
   }
   campaignCost(cid) {
@@ -400,7 +428,7 @@ class BizLife {
     // 现金不够：动用信用额度；还不够就重组（不结束游戏）
     let restructured = null;
     if (s.cash < 0) {
-      const draw = Math.min(-s.cash, Math.max(0, Math.max(4e6, 2.5 * Math.max(0, ebitda)) - s.debt));
+      const draw = Math.min(-s.cash, Math.max(0, this.creditMult() * Math.max(4e6, 2.5 * Math.max(0, ebitda)) - s.debt));
       s.debt += draw; s.cash += draw; s.flows.financing += draw;
     }
     if (s.cash < 0) restructured = this.restructure(revenue);
@@ -479,7 +507,16 @@ class BizLife {
     const wide = D.COUNTRIES.filter((c) => s.countries[c.id].level >= 2).length;
     const home = by([s.hq]);
     const emerging = by(['CN', 'IN', 'BR', 'MX', 'VN'].filter((x) => x !== s.hq));
+    const yrs = D.END_YEAR - (s.startYear || D.START_YEAR) + 1;
+    const lowCostFactories = ['CN', 'VN', 'IN', 'MX'].filter((c) => c !== s.hq && s.countries[c].level >= 3).length;
+    const peakV = Math.max(...s.history.map((h) => h.valuation));
+    const cheated = s.caseLog.some((c) => c.id === 'A3_EMISSION' && c.outcome === '东窗事发');
     const E = [
+      { id: 'UNICORN', name: '超级独角兽', ok: s.founder === 'vc' && V >= 2.5e10, text: '投资人的钱没有白花，你把公司做成了百亿美元级别。' },
+      { id: 'DYNASTY', name: '百年老店', ok: s.founder === 'family' && s.ownership >= 0.99 && s.restructures === 0 && V >= 5e9, text: '股份一直握在家族手里，公司已经可以传给下一代了。' },
+      { id: 'SOE_REBORN', name: '老树新花', ok: s.founder === 'soe' && V >= 1.5e10, text: '从笨重的国企车间起步，变成了一家有活力的现代企业。' },
+      { id: 'TECH', name: '技术信仰', ok: s.quality >= 93 && V >= 2e9, text: '你始终相信产品力，市场最终给了回报。' },
+      { id: 'LATECOMER', name: '后发先至', ok: (s.startYear || D.START_YEAR) >= 2015 && V >= 1e10, text: '起步晚了二十年，十年就追上了老前辈。' },
       { id: 'GIANT', name: '全球巨头', ok: V >= 5e10 && wide >= 6, text: '你的公司遍布全球，跻身世界级企业之列。' },
       { id: 'PHOENIX', name: '浴火重生', ok: s.restructures > 0 && V >= 1e9, text: '经历过重组，又重新站上了十亿美元。' },
       { id: 'GLOBAL', name: '全球玩家', ok: wide >= 6 && home < 0.5 && V >= 1e9, text: '六个以上国家有你的分公司或工厂，一半以上的收入来自海外。' },
@@ -487,9 +524,13 @@ class BizLife {
       { id: 'HOME_KING', name: '本土之王', ok: home >= 0.75 && V >= 5e8, text: '主场就是你的城堡。' },
       { id: 'CHAMPION', name: '隐形冠军', ok: V >= 5e8 && V < 5e10 && s.quality >= 70, text: '规模不算最大，产品力却是一流。' },
       { id: 'EMERGING', name: '新兴市场先锋', ok: emerging >= 0.5, text: '一半以上的收入来自新兴市场。' },
+      { id: 'FACTORY', name: '世界工厂主', ok: this.ind.physical && lowCostFactories >= 2 && V >= 2e9, text: '你在多个低成本国家建起了工厂，把全球供应链握在手里。' },
+      { id: 'SURVIVOR', name: '屡败屡战', ok: s.restructures >= 2, text: '重组了不止一次，可你始终没有放弃。' },
+      { id: 'FALLEN', name: '盛极而衰', ok: peakV >= 4 * Math.max(V, 1) && peakV >= 2e9, text: '巅峰时估值是现在的好几倍，没能守住。' },
+      { id: 'SCANDAL', name: '丑闻缠身', ok: cheated, text: '一次侥幸，代价是几十年的信任。' },
       { id: 'STEADY', name: '稳健经营者', ok: s.restructures === 0 && s.debt < 0.5 * rev && V >= 2e8, text: '没有大起大落，一步一个脚印。' }
     ].filter((e) => e.ok);
-    if (!E.length) E.push({ id: 'UNFINISHED', name: '创业未竟', text: '三十年过去，故事还没讲完。' });
+    if (!E.length) E.push({ id: 'UNFINISHED', name: '创业未竟', text: `${yrs} 年过去，故事还没讲完。` });
     return E.slice(0, 3).map((e, i) => ({ id: e.id, name: e.name, text: e.text, role: i === 0 ? 'primary' : 'secondary' }));
   }
 

@@ -17,7 +17,7 @@ const fs = require('fs');
   await page.waitForTimeout(300);
   const loc = (id) => page.evaluate((i) => window.__locate(i), id);
   const tap = async (id) => { const p = await loc(id); if (!p) throw new Error('找不到 ' + id + '：' + (await page.evaluate(() => window.__ids().join(',')))); await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.waitForTimeout(90); await page.mouse.up(); await page.waitForTimeout(100); };
-  const cellXY = (x, y) => page.evaluate(([x, y]) => { const ui = window.__app.cityUI; const r = ui.rect; return { x: r.x + ui.cam.x + (x - y) * 16 * ui.cam.z, y: r.y + ui.cam.y + (x + y) * 8 * ui.cam.z }; }, [x, y]);
+  const cellXY = (x, y) => page.evaluate(([x, y]) => { const ui = window.__app.cityUI; const r = ui.rect; const S = 24 * ui.cam.z; return { x: r.x + ui.cam.x + (x + 0.5) * S, y: r.y + ui.cam.y + (y + 0.5) * S }; }, [x, y]);
   const dragCells = async (a, b) => {
     const p = await cellXY(a[0], a[1]); const q = await cellXY(b[0], b[1]);
     await page.mouse.move(p.x, p.y); await page.mouse.down();
@@ -40,7 +40,8 @@ const fs = require('fs');
 
   await tap('mode-city');
   await shot('01-home-city');
-  await tap(mode === 'shenzhen' ? 'start-shenzhen' : 'start-sandbox');
+  await page.evaluate(() => window.__app.r.scrollTo(99999)); await shot('01b-home-city-sandbox'); await page.evaluate(() => window.__app.r.scrollTo(0));
+  if (mode === 'sandbox') await tap('start-sandbox'); else await tap('sc-' + mode);
   if (await page.evaluate(() => !!window.__app.city.s.pendingEvent)) { await shot('02a-event'); await tap('event-next'); }
   await page.evaluate(() => window.__app.cityButton('speed0')); // 暂停，按自己的节奏建
   await shot('02-start');
@@ -53,7 +54,7 @@ const fs = require('fs');
     return best;
   });
   const [cx, cy] = center;
-  await page.evaluate(([cx, cy]) => { const ui = window.__app.cityUI; ui.cam.z = 0.85; ui.cam.x = ui.rect.w / 2 - (cx - cy) * 16 * ui.cam.z; ui.cam.y = ui.rect.h / 2 - (cx + cy) * 8 * ui.cam.z; window.__app.refresh(); }, [cx, cy]);
+  await page.evaluate(([cx, cy]) => { const ui = window.__app.cityUI; ui.cam.z = 1.0; const S = 24; ui.cam.x = ui.rect.w / 2 - (cx + 0.5) * S; ui.cam.y = ui.rect.h / 2 - (cy + 0.5) * S; window.__app.refresh(); }, [cx, cy]);
   await page.waitForTimeout(150);
   await tap('tool-road');
   await dragCells([cx - 6, cy], [cx + 6, cy]);

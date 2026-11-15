@@ -121,7 +121,7 @@ function endingPage(app) {
     header: header(app),
     body(f) {
       f.card({ pad: 20 }, (c) => {
-        c.text(`${s.name} · 1995–2024`, { size: 12, weight: 600, color: T.c.accent, align: 'center', lh: 1.6 });
+        c.text(`${s.name} · ${s.startYear || 1995}–2024`, { size: 12, weight: 600, color: T.c.accent, align: 'center', lh: 1.6 });
         c.text(primary.name, { size: 34, weight: 800, color: '#1e1b4b', align: 'center', lh: 1.35 });
         if (secondary.length) c.text(secondary.map((e) => e.name).join(' · '), { size: 15, weight: 600, color: T.c.violet, align: 'center', lh: 1.6 });
         c.text(primary.text, { size: 14, color: T.c.body, align: 'center', lh: 1.6 });
@@ -135,7 +135,7 @@ function endingPage(app) {
         ], 2, { after: 0 });
       });
       f.card({}, (c) => {
-        c.sectionTitle('30 年估值曲线', '橙点 = 案例时刻，红点 = 重组');
+        c.sectionTitle(`${2025 - (s.startYear || 1995)} 年估值曲线`, '橙点 = 案例时刻，红点 = 重组');
         curve(c, life);
         c.sectionTitle('最终布局');
         const lv = life.ind.physical ? ['—', '出口', '分公司', '工厂'] : ['—', '线上', '分公司', '数据中心'];
@@ -146,7 +146,8 @@ function endingPage(app) {
         s.caseLog.forEach((cs) => {
           c.text(`${cs.year} · ${cs.title}`, { size: 14, weight: 700, color: T.c.ink, lh: 1.5 });
           c.text(`你：${cs.option} → ${cs.outcome}`, { size: 12, color: T.c.body, lh: 1.5 });
-          c.text(`理论：${cs.theory.name}`, { size: 12, color: T.c.violet, lh: 1.5 });
+          if (cs.theory) c.text(`${cs.event ? '突发事件 · ' : '理论：'}${cs.theory.name}`, { size: 12, color: T.c.violet, lh: 1.5 });
+          else if (cs.event) c.text('突发事件', { size: 12, color: T.c.muted, lh: 1.5 });
           c.divider(5);
         });
       });

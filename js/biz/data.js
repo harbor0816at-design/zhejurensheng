@@ -49,14 +49,26 @@ const INDUSTRIES = [
     gdpShare: 0.0015, pen: { 1995: 0.6, 1999: 1.6, 2001: 1.3, 2003: 1.6, 2008: 2.8, 2012: 4.2, 2016: 6.0, 2020: 8.5, 2024: 10.5 },
     gm: 0.78, comp: 460, pe: 24, tradeable: true, importCost: 0.0,
     blurb: '软件和网络服务。边际成本低、网络效应强，赢家通吃，也最受泡沫影响。',
-    names: ['云帆软件', '织网科技', '星图互联', '万象数据'] }
+    names: ['云帆软件', '织网科技', '星图互联', '万象数据'] },
+  { id: 'auto', name: '汽车制造', short: '汽车', physical: true,
+    gdpShare: 0.012, pen: { 1995: 1.0, 2007: 1.05, 2009: 0.85, 2012: 1.0, 2017: 1.08, 2020: 0.9, 2024: 1.02 },
+    gm: 0.23, comp: 320, pe: 10, tradeable: true, importCost: 0.09, factoryMult: 2,
+    blurb: '整车制造。投入最重、利润最薄，工厂和关税决定生死，后期要面对电动化浪潮。',
+    names: ['长风汽车', '远驰汽车', '北极星汽车', '新程汽车'] },
+  { id: 'apparel', name: '服装零售', short: '服装', physical: true,
+    gdpShare: 0.005, pen: { 1995: 1.0, 2024: 1.05 },
+    gm: 0.55, comp: 380, pe: 17, tradeable: true, importCost: 0.06,
+    blurb: '服装品牌和门店。人工成本敏感、潮流变得快，供应链速度和本地化决定输赢。',
+    names: ['织梦服饰', '晨曦衣橱', '简衣', '风尚集团'] }
 ];
 
 // 各国对各行业外资的准入 / 适配度（0–1.2），按年份插值
 const ACCESS = {
   electronics: { US: 1, CN: { 1995: 0.7, 2002: 0.95 }, JP: 0.8, DE: 1, UK: 1, IN: { 1995: 0.6, 2010: 0.9 }, BR: 0.75, MX: 0.95, VN: { 1995: 0.6, 2007: 0.95 } },
   beverage: { US: 1, CN: { 1995: 0.75, 2002: 0.95 }, JP: 0.8, DE: 0.9, UK: 1, IN: { 1995: 0.7, 2005: 0.85 }, BR: 0.95, MX: 1.05, VN: { 1995: 0.7, 2007: 0.95 } },
-  software: { US: 1.05, CN: 0.35, JP: 0.7, DE: 0.85, UK: 1, IN: { 1995: 0.5, 2008: 0.9 }, BR: 0.8, MX: 0.85, VN: 0.6 }
+  software: { US: 1.05, CN: 0.35, JP: 0.7, DE: 0.85, UK: 1, IN: { 1995: 0.5, 2008: 0.9 }, BR: 0.8, MX: 0.85, VN: 0.6 },
+  auto: { US: 0.95, CN: { 1995: 0.55, 2005: 0.8, 2018: 0.95 }, JP: 0.55, DE: 0.75, UK: 0.95, IN: { 1995: 0.6, 2010: 0.85 }, BR: 0.85, MX: 0.95, VN: 0.7 },
+  apparel: { US: 1, CN: { 1995: 0.75, 2005: 0.95 }, JP: 0.85, DE: 0.95, UK: 1, IN: { 1995: 0.6, 2012: 0.85 }, BR: 0.85, MX: 0.95, VN: 0.9 }
 };
 
 // 进口关税（实物商品，按销售国），按年份插值
@@ -126,4 +138,19 @@ function interp(table, year) {
   return table[ys[0]];
 }
 
-module.exports = { START_YEAR, END_YEAR, COUNTRIES, INDUSTRIES, ACCESS, TARIFF, SPECIAL_TARIFF, EVENTS, BASE_RATE, interp };
+// 开局年份：越晚市场越大、对手越强，起步资金也更多
+const START_YEARS = [
+  { year: 1995, name: '1995 · 全程', desc: '三十年完整历程：亚洲金融危机、入世、金融海啸、疫情都要经历。' },
+  { year: 2005, name: '2005 · 中途入场', desc: '全球化高歌猛进时创业，马上就要迎来金融海啸。' },
+  { year: 2015, name: '2015 · 快节奏', desc: '十年短局：移动互联网、贸易摩擦、疫情、通胀接踵而来。' }
+];
+// 创始背景：不同的起点、优势和短板
+const FOUNDERS = [
+  { id: 'startup', name: '白手起家', desc: '标准开局，没有包袱也没有靠山。', cash: 1, quality: 45, brand: 15 },
+  { id: 'family', name: '家族企业', desc: '本土品牌深、口碑好，但家底薄、不爱借钱（信用额度减半）。', cash: 0.8, quality: 48, brand: 30, credit: 0.5 },
+  { id: 'vc', name: '风投初创', desc: '账上现金多，可创始人只占六成股份；投资人每年都盯着增长。', cash: 2.4, quality: 50, brand: 8, ownership: 0.6 },
+  { id: 'soe', name: '国企分拆', desc: '自带工厂、钱多、债也多；前五年流程慢，每年少一个行动点。', cash: 1.6, quality: 38, brand: 22, debt: 4e6, homeLevel: 3, apPenalty: 5 },
+  { id: 'geek', name: '技术极客', desc: '产品一流、研发开到最大，但品牌几乎为零、现金很紧。', cash: 0.7, quality: 68, brand: 4, rnd: 'high' }
+];
+
+module.exports = { START_YEARS, FOUNDERS, START_YEAR, END_YEAR, COUNTRIES, INDUSTRIES, ACCESS, TARIFF, SPECIAL_TARIFF, EVENTS, BASE_RATE, interp };

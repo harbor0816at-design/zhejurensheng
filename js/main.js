@@ -22,10 +22,10 @@ const app = {
   life: null,
   screen: 'home',          // home | play | city
   mode: 'biz',             // 首页当前选项卡：biz | city
-  city: null, cityUI: freshCityUI(), cityView: 'map', citySpeed: 1, cityTimer: null, savedCity: null, citySeed: '',
+  city: null, cityUI: freshCityUI(), cityView: 'map', citySpeed: 1, cityTimer: null, savedCity: null, citySeed: '', citySetup: { map: 'river', money: 'normal', challenges: [] },
   view: 'board',           // board | country | strategy | report | reveal
   countryId: null,
-  setup: { industry: 'electronics', hq: 'US', name: S.D.INDUSTRIES[0].names[0], seed: '' },
+  setup: { industry: 'electronics', hq: 'US', name: S.D.INDUSTRIES[0].names[0], seed: '', startYear: 1995, founder: 'startup' },
   saved: null,
   invite: null,
   gamesDone: 0,
@@ -61,6 +61,14 @@ const app = {
     this.setup.industry = id; this.refresh();
   },
   pickHq(id) { this.setup.hq = id; this.refresh(); },
+  pickStart(y) { this.setup.startYear = y; this.refresh(); },
+  pickFounder(id) { this.setup.founder = id; this.refresh(); },
+  randomSetup() {
+    const r = (a) => a[Math.floor(Math.random() * a.length)];
+    const ind = r(S.D.INDUSTRIES);
+    this.setup = { industry: ind.id, hq: r(S.D.COUNTRIES).id, name: r(ind.names), seed: '', startYear: r(S.D.START_YEARS).year, founder: r(S.D.FOUNDERS).id };
+    this.refresh(); this.toast('已随机组合，满意就开始吧');
+  },
   editName() {
     platform.prompt('公司名', '最多 8 个字', this.setup.name).then((v) => {
       if (v === null) return;
@@ -106,16 +114,15 @@ const app = {
   editCitySeed() {
     platform.prompt('地图种子', '留空随机', this.citySeed).then((v) => { if (v === null) return; this.citySeed = S.normalizeSeed(v); this.refresh(); });
   },
-  startCity(mode) {
-    this.stopCityTimer();
-    this.city = CitySim.create({ mode, seed: mode === 'shenzhen' ? 'SZ-1980' : (this.citySeed || '') });
-    this.enterCity();
-  },
+  startCityScenario(id) { this.stopCityTimer(); this.city = CitySim.create({ mode: 'scenario', scenario: id }); this.enterCity(); },
+  startCitySandbox() { this.stopCityTimer(); const c = this.citySetup; this.city = CitySim.create({ mode: 'sandbox', map: c.map, money: c.money, challenges: c.challenges.slice(), seed: this.citySeed || '' }); this.enterCity(); },
+  toggleChallenge(id) { const a = this.citySetup.challenges; const i = a.indexOf(id); if (i >= 0) a.splice(i, 1); else a.push(id); this.refresh(); },
   resumeCity(c) { this.city = c; this.enterCity(); },
   enterCity() {
     this.cityUI = freshCityUI(); this.cityView = 'map'; this.screen = 'city';
     this.citySpeed = 1; this.saveCity(); this.startCityTimer(); this.render();
-    this.toast(this.city.s.mode === 'shenzhen' ? '1980 年，海边的小渔村。先修路、划区、建电厂和水厂。' : '先修一条路，在旁边划住宅和工业区，再建电厂和水厂。');
+    const sc = this.city.scenario;
+    this.toast(sc ? `${sc.start} 年，${sc.place}。` : '先修一条路，在旁边划住宅和工业区，再建电厂和水厂。');
   },
   startCityTimer() {
     this.stopCityTimer();
@@ -164,7 +171,7 @@ const app = {
   cityLoan(kind) { const r = kind === 'borrow' ? this.city.borrow() : this.city.repay(); if (!r.ok) this.toast(r.reason); this.city.stats(); this.saveCity(); this.refresh(); },
   setCityView(v) { this.cityView = v; this.render(); },
   cityCloseEvent() { this.city.s.pendingEvent = null; this.saveCity(); this.render(); },
-  cityFreePlay() { const s = this.city.s; s.freePlay = true; s.ended = false; s.mode = 'sandbox'; this.saveCity(); this.render(); },
+  cityFreePlay() { const s = this.city.s; s.freePlay = true; s.ended = false; this.saveCity(); this.startCityTimer(); this.render(); },
   go(view) { this.view = view; this.render(); },
   openCountry(cid) { this.countryId = cid; this.view = 'country'; this.render(); },
 
@@ -212,7 +219,7 @@ const app = {
   share() { platform.shareNow(); },
   restart(same) {
     const s = this.life.s;
-    this.setup = { industry: s.industry, hq: s.hq, name: s.name, seed: same ? s.seed : '' };
+    this.setup = { industry: s.industry, hq: s.hq, name: s.name, seed: same ? s.seed : '', startYear: s.startYear || 1995, founder: s.founder || 'startup' };
     this.gamesDone += 1;
     if (config.ads.interstitialEvery && this.gamesDone % config.ads.interstitialEvery === 0) platform.showInterstitial();
     this.start();
@@ -224,19 +231,21 @@ const app = {
       const title = (s.endings.find((e) => e.role === 'primary') || {}).name || '';
       return {
         title: config.share.title.replace('{company}', s.name).replace('{title}', title).replace('{value}', F.usd(s.valuation)),
-        query: `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}`,
+        query: `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}&y=${s.startYear || 1995}&f=${s.founder || 'startup'}`,
         imageUrl: sharecard.make(life) || undefined
       };
     }
     const s = life ? life.s : null;
-    return { title: config.share.titleNoEnding, query: s ? `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}` : '' };
+    return { title: config.share.titleNoEnding, query: s ? `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}&y=${s.startYear || 1995}&f=${s.founder || 'startup'}` : '' };
   },
   handleQuery(q) {
     if (!q || !q.seed) return;
     const seed = S.normalizeSeed(decodeURIComponent(q.seed));
     const ind = S.D.INDUSTRIES.find((i) => i.id === q.ind);
-    const hq = ['US', 'CN', 'DE', 'JP', 'IN'].indexOf(q.hq) >= 0 ? q.hq : this.setup.hq;
+    const hq = S.D.COUNTRIES.some((c) => c.id === q.hq) ? q.hq : this.setup.hq;
     this.setup.seed = seed; this.setup.hq = hq;
+    const y = Number(q.y); if (S.D.START_YEARS.some((x) => x.year === y)) this.setup.startYear = y;
+    if (S.D.FOUNDERS.some((x) => x.id === q.f)) this.setup.founder = q.f;
     if (ind) { this.setup.industry = ind.id; this.setup.name = ind.names[0]; }
     this.invite = { seed };
     if (this.screen === 'home') this.render();
