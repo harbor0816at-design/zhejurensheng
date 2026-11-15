@@ -419,14 +419,15 @@ class Renderer {
     }
     const footH = footer ? footer.y : 0;
     const body = new Flow(this.m, side, this.W - side * 2, hdrH + 10);
-    if (page.body) page.body(body);
+    if (page.body && !page.surface) page.body(body);
+    this.surfaceRect = page.surface ? { x: 0, y: hdrH, w: this.W, h: this.H - hdrH - footH } : null;
     const contentBottom = body.y + (footer ? 4 : Math.max(this.sys.safeBottom, 16) + 8);
     let header = null;
     if (page.header) {
       header = new Flow(this.m, side, this.W - side * 2, 0);
       page.header(header, hdrH, this.sys);
     }
-    this.maxScroll = Math.max(0, contentBottom - (this.H - footH));
+    this.maxScroll = page.surface ? 0 : Math.max(0, contentBottom - (this.H - footH));
     if (this.scrollY > this.maxScroll) this.scrollY = this.maxScroll;
     this.layoutCache = { body, footer, header, hdrH, footH };
   }
@@ -448,6 +449,11 @@ class Renderer {
     this.drawPressed(ctx, body.hits, 'body');
     ctx.restore();
 
+    if (this.page && this.page.surface && this.surfaceRect) {
+      ctx.save(); ctx.globalAlpha = 1;
+      try { this.page.surface.draw(ctx, this.surfaceRect); } catch (e) { console.error(e); }
+      ctx.restore(); ctx.globalAlpha = this.fade;
+    }
     // 顶栏
     if (header) {
       ctx.fillStyle = 'rgba(15,23,42,0.96)'; ctx.fillRect(0, 0, this.W, hdrH);
@@ -484,7 +490,7 @@ class Renderer {
         const lines = this.m.wrap(this.toast.msg, f, this.W - 100);
         const tw = Math.min(this.W - 60, Math.max(...lines.map((l) => this.m.width(l, f))) + 32);
         const th = lines.length * 21 + 20;
-        const tx = (this.W - tw) / 2; const ty = this.H * 0.42;
+        const tx = (this.W - tw) / 2; const ty = this.page && this.page.toastTop && this.surfaceRect ? this.surfaceRect.y + 120 : this.H * 0.42;
         ctx.fillStyle = 'rgba(15,23,42,0.92)'; roundRect(ctx, tx, ty, tw, th, 12); ctx.fill();
         ctx.font = f; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
         lines.forEach((l, i) => ctx.fillText(l, this.W / 2, ty + 25 + i * 21));
@@ -513,7 +519,7 @@ class Renderer {
       this.dirty = true;
     }
     if (this.toast) this.dirty = true;
-    if (this.page && this.page.animate) this.dirty = true;
+    if (this.page && this.page.animate && now - (this.lastAnim || 0) > (this.page.animateMs || 66)) { this.dirty = true; this.lastAnim = now; }
     this.lastT = now;
     if (this.dirty) {
       this.dirty = false;
@@ -594,14 +600,29 @@ class Renderer {
       const t = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]) || e;
       return { x: t.clientX !== undefined ? t.clientX : t.pageX, y: t.clientY !== undefined ? t.clientY : t.pageY };
     };
+    const pts = (list) => Array.prototype.map.call(list || [], (t) => ({ x: t.clientX !== undefined ? t.clientX : t.pageX, y: t.clientY !== undefined ? t.clientY : t.pageY, id: t.identifier }));
     this.p.onTouchStart((e) => {
       const p = pt(e);
+      const L = this.layoutCache;
+      const sf = this.page && this.page.surface; const R = this.surfaceRect;
+      if (this.surfaceTouch || (sf && R && p.y >= R.y && p.y <= R.y + R.h && !(L && L.footer && p.y >= this.H - L.footH))) {
+        this.surfaceTouch = true; this.touch = null;
+        try { sf.down(pts(e.touches && e.touches.length ? e.touches : e.changedTouches)); } catch (err) { console.error(err); }
+        this.invalidate();
+        return;
+      }
       const f = this.findHit(p.x, p.y);
       this.anim = false;
       this.touch = { sx: p.x, sy: p.y, ly: p.y, lt: Date.now(), st: Date.now(), s0: this.scrollY, moved: false, hit: f && f.hit, layer: f && f.layer, vel: 0 };
       this.invalidate();
     });
     this.p.onTouchMove((e) => {
+      if (this.surfaceTouch) {
+        const sf = this.page && this.page.surface;
+        try { if (sf) sf.move(pts(e.touches && e.touches.length ? e.touches : e.changedTouches)); } catch (err) { console.error(err); }
+        this.invalidate();
+        return;
+      }
       const t = this.touch; if (!t) return;
       const p = pt(e);
       const dy = p.y - t.sy;
@@ -625,6 +646,14 @@ class Renderer {
       this.invalidate();
     });
     const end = (e, cancel) => {
+      if (this.surfaceTouch) {
+        const sf = this.page && this.page.surface;
+        const left = pts(e.touches);
+        try { if (sf) sf.up(left, pts(e.changedTouches), cancel); } catch (err) { console.error(err); }
+        if (!left.length) this.surfaceTouch = false;
+        this.invalidate();
+        return;
+      }
       const t = this.touch; this.touch = null;
       if (!t) return;
       if (t.dragging) {

@@ -41,16 +41,19 @@
     let down = false;
     c.addEventListener('mousedown', (e) => { down = true; listeners.ts.forEach((f) => f(touchEvt(e))); });
     window.addEventListener('mousemove', (e) => { if (down) listeners.tm.forEach((f) => f(touchEvt(e))); });
-    window.addEventListener('mouseup', (e) => { if (!down) return; down = false; listeners.te.forEach((f) => f(touchEvt(e))); });
+    window.addEventListener('mouseup', (e) => { if (!down) return; down = false; const ev = touchEvt(e); ev.touches = []; listeners.te.forEach((f) => f(ev)); });
     const tt = (e) => { const t = e.changedTouches[0]; return touchEvt({ clientX: t.clientX, clientY: t.clientY }); };
-    c.addEventListener('touchstart', (e) => { e.preventDefault(); listeners.ts.forEach((f) => f(tt(e))); }, { passive: false });
-    c.addEventListener('touchmove', (e) => { e.preventDefault(); listeners.tm.forEach((f) => f(tt(e))); }, { passive: false });
-    c.addEventListener('touchend', (e) => { e.preventDefault(); listeners.te.forEach((f) => f(tt(e))); }, { passive: false });
+    c.addEventListener('touchstart', (e) => { e.preventDefault(); listeners.ts.forEach((f) => f(multi(e))); }, { passive: false });
+    c.addEventListener('touchmove', (e) => { e.preventDefault(); listeners.tm.forEach((f) => f(multi(e))); }, { passive: false });
+    const multi = (e) => { const r = screenEl.getBoundingClientRect(); const m = (l) => Array.prototype.map.call(l, (t) => ({ clientX: t.clientX - r.left, clientY: t.clientY - r.top, identifier: t.identifier })); return { touches: m(e.touches), changedTouches: m(e.changedTouches), timeStamp: Date.now() }; };
+    c.addEventListener('touchend', (e) => { e.preventDefault(); listeners.te.forEach((f) => f(multi(e))); }, { passive: false });
     c.addEventListener('touchcancel', (e) => { listeners.tc.forEach((f) => f(tt(e))); });
     c.addEventListener('wheel', (e) => {
       // 滚轮直接滚动页面
       const r = window.__app && window.__app.r;
-      if (r) { r.scrollTo(r.scrollY + e.deltaY); }
+      const sf = r && r.page && r.page.surface;
+      const rect = screenEl.getBoundingClientRect();
+      if (sf && sf.wheel) { sf.wheel(e.deltaY, e.clientX - rect.left, e.clientY - rect.top); r.invalidate(); } else if (r) { r.scrollTo(r.scrollY + e.deltaY); }
       e.preventDefault();
     }, { passive: false });
   }

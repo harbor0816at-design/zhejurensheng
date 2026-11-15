@@ -3,6 +3,7 @@ module.exports = {
   appName: '这局人生',
   version: '2.0.0-demo',
   saveKey: 'zjrs.biz.v2.save',
+  citySaveKey: 'zjrs.city.v1.save',
   ads: {
     // 激励视频：结局页解锁「完整复盘」。留空 = 不接广告，完整复盘直接免费。
     rewardedVideo: '',

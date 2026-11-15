@@ -7,14 +7,62 @@ const config = require('../config.js');
 
 const HQS = ['US', 'CN', 'DE', 'JP', 'IN'];
 
+function citySection(f, app) {
+  f.text('修路、划区、供水供电，把一片空地建成天际线', { size: 14, color: '#cbd5e1', align: 'center', lh: 1.6 });
+  f.gap(8);
+  // 小天际线插画
+  f.custom(110, (push, x, y, w) => {
+    const base = y + 100;
+    push({ t: 'rect', x, y: base, w, h: 2, r: 1, fill: 'rgba(255,255,255,0.2)' });
+    const bars = [18, 34, 26, 60, 44, 82, 52, 96, 70, 40, 58, 30, 22, 46, 64, 36, 20];
+    const bw = w / bars.length;
+    bars.forEach((h, i) => {
+      const col = i % 3 === 0 ? '#38bdf8' : i % 3 === 1 ? '#cbd5e1' : '#94a3b8';
+      push({ t: 'rect', x: x + i * bw + 2, y: base - h, w: bw - 4, h, r: 2, fill: col });
+      for (let k = 8; k < h - 4; k += 9) push({ t: 'rect', x: x + i * bw + 5, y: base - h + k, w: bw - 10, h: 2, r: 1, fill: 'rgba(15,23,42,0.25)' });
+    });
+    push({ t: 'circle', x: x + w - 40, y: y + 18, r: 12, fill: '#fde68a' });
+  });
+  f.gap(10);
+  f.card({}, (c) => {
+    c.text('自由建造', { size: 16, weight: 700, color: T.c.ink, lh: 1.5 });
+    c.text('随机生成河流、湖泊和森林，没有时间限制。人口越多，解锁的建筑越多，楼也越盖越高。', { size: 13, color: T.c.body, lh: 1.6 });
+    c.gap(6);
+    const y = c.y; const h = 44; const seed = app.citySeed;
+    c.push({ t: 'rect', x: c.x, y, w: c.w, h, r: 10, fill: T.c.soft, stroke: T.c.line });
+    c.push({ t: 'text', x: c.x + 12, y: y + 27, s: '地图', font: T.font(13), color: T.c.muted });
+    c.push({ t: 'text', x: c.x + 56, y: y + 27, s: seed || '留空随机', font: T.font(15, seed ? 600 : 400), color: seed ? T.c.ink : T.c.faint });
+    c.push({ t: 'text', x: c.x + c.w - 12, y: y + 27, s: '修改', font: T.font(13, 600), color: T.c.accent, align: 'right' });
+    c.hit(c.x, y, c.w, h, () => app.editCitySeed(), 'city-seed');
+    c.y += h + 10;
+    c.button('开始自由建造', () => app.startCity('sandbox'), { id: 'start-sandbox' });
+  });
+  f.card({ stripe: '#f59e0b' }, (c) => {
+    c.text('历史剧本 · 深圳 1980', { size: 16, weight: 700, color: T.c.ink, lh: 1.5 });
+    c.text('从海边小渔村起步，经历经济特区设立、第一次土地拍卖、证券交易所开业、入世、地铁开通、产业升级……在每个年代达成人口目标，最多五颗星。', { size: 13, color: T.c.body, lh: 1.6 });
+    c.gap(6);
+    c.button('开始剧本', () => app.startCity('shenzhen'), { id: 'start-shenzhen', after: 0 });
+  });
+  const sv = app.savedCity;
+  if (sv && !(sv.s.ended && !sv.s.freePlay)) {
+    f.card({}, (c) => {
+      c.button(`继续存档（${sv.s.name} · ${sv.year} 年 · 人口 ${sv.st.pop}）`, () => app.resumeCity(sv), { kind: 'secondary', id: 'resume-city', after: 0 });
+    });
+  }
+  f.text('原创城市建造玩法；历史事件按公开资料改写，数值为游戏示意。', { size: 11, color: T.c.onDarkMuted, align: 'center', lh: 1.6 });
+}
+
 function home(app) {
   const st = app.setup;
   return {
     body(f) {
       f.gap(18);
       f.text('这局人生', { size: 38, weight: 800, color: '#ffffff', align: 'center', lh: 1.3 });
-      f.text('全球商业版 · 1995 → 2024', { size: 15, color: '#cbd5e1', align: 'center' });
-      f.gap(14);
+      f.gap(6);
+      f.seg([{ label: '全球商业', on: app.mode === 'biz', onTap: () => app.pickMode('biz'), id: 'mode-biz' }, { label: '当市长', on: app.mode === 'city', onTap: () => app.pickMode('city'), id: 'mode-city' }], { h: 42, size: 15, after: 14 });
+      if (app.mode === 'city') { citySection(f, app); return; }
+      f.text('1995 → 2024 · 经营一家全球公司', { size: 14, color: '#cbd5e1', align: 'center' });
+      f.gap(12);
       // 小棋盘插画
       f.custom(118, (push, x, y, w) => {
         const order = ['US', 'UK', 'DE', 'MX', 'CN', 'JP', 'BR', 'IN', 'VN'];
