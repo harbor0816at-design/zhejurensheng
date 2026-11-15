@@ -3,139 +3,154 @@ const platform = require('./platform.js');
 const config = require('./config.js');
 const { Renderer } = require('./ui/core.js');
 const S = require('./game/session.js');
+const F = require('./game/format.js');
 const sharecard = require('./ui/sharecard.js');
-const { home, opening } = require('./screens/home.js');
-const { year } = require('./screens/year.js');
-const { decision, result } = require('./screens/decision.js');
-const { ending } = require('./screens/ending.js');
+const { home } = require('./screens/home.js');
+const { board } = require('./screens/board.js');
+const { countryPage, strategyPage } = require('./screens/country.js');
+const { casePage, revealPage } = require('./screens/casepage.js');
+const { reportPage, endingPage } = require('./screens/report.js');
 
 const app = {
   r: null,
   life: null,
-  screen: 'home',        // home | opening | play
-  resultIdx: null,
-  ui: {},
-  seedInput: '',
-  invite: '',
+  screen: 'home',          // home | play
+  view: 'board',           // board | country | strategy | report | reveal
+  countryId: null,
+  setup: { industry: 'electronics', hq: 'US', name: S.D.INDUSTRIES[0].names[0], seed: '' },
   saved: null,
-  reviewUnlocked: false,
-  adsOn: false,
+  invite: null,
   gamesDone: 0,
 
   page() {
     if (this.screen === 'home' || !this.life) return home(this);
-    if (this.screen === 'opening') return opening(this);
     const s = this.life.s;
-    if (this.resultIdx !== null && s.decisions[this.resultIdx]) return result(this);
-    if (s.ended) return ending(this);
-    if (s.pending.length) return decision(this);
-    return year(this);
+    if (this.view === 'report' && s.report) return reportPage(this);
+    if (this.view === 'reveal' && s.caseResult) return revealPage(this);
+    if (s.caseId) return casePage(this);
+    if (s.ended) return endingPage(this);
+    if (this.view === 'country' && this.countryId) return countryPage(this);
+    if (this.view === 'strategy') return strategyPage(this);
+    return board(this);
   },
   render(opts) { this.r.setPage(this.page(), opts); },
   refresh() { this.render({ keepScroll: true, noFade: true }); },
-  persist() { if (this.life) S.save(platform.storage, this.life); },
+  save() { if (this.life) S.save(platform.storage, this.life); },
+  toast(msg) { this.r.showToast(msg); },
 
   // ---- 首页 ----
-  editSeed() {
-    platform.prompt('输入种子码', '例如 LIFE-48291，留空随机', this.seedInput).then((v) => {
+  pickIndustry(id) {
+    const old = S.D.INDUSTRIES.find((i) => i.id === this.setup.industry);
+    const ind = S.D.INDUSTRIES.find((i) => i.id === id);
+    if (!this.setup.name || old.names.indexOf(this.setup.name) >= 0) this.setup.name = ind.names[0];
+    this.setup.industry = id; this.refresh();
+  },
+  pickHq(id) { this.setup.hq = id; this.refresh(); },
+  editName() {
+    platform.prompt('公司名', '最多 8 个字', this.setup.name).then((v) => {
       if (v === null) return;
-      this.seedInput = S.normalizeSeed(v);
-      this.refresh();
+      this.setup.name = String(v).trim().slice(0, 8) || this.setup.name; this.refresh();
     });
   },
-  start(seed) {
-    this.life = S.create(seed);
-    this.ui = {}; this.resultIdx = null; this.reviewUnlocked = false; this.invite = '';
-    this.persist();
-    this.screen = 'opening';
-    this.render();
+  editSeed() {
+    platform.prompt('种子码', '例如 BIZ-48291，留空随机', this.setup.seed).then((v) => {
+      if (v === null) return;
+      this.setup.seed = S.normalizeSeed(v); this.refresh();
+    });
   },
-  resume(life) {
-    this.life = life; this.ui = {}; this.resultIdx = null; this.reviewUnlocked = false;
-    this.screen = 'play';
-    this.render();
+  start() {
+    this.life = S.create(this.setup);
+    this.invite = null;
+    this.screen = 'play'; this.view = 'board';
+    this.save(); this.render();
   },
+  resume(life) { this.life = life; this.screen = 'play'; this.view = 'board'; this.render(); },
   clearSave() {
-    platform.confirm('清除存档？', '当前未完成的这一局会被删掉。').then((ok) => {
+    platform.confirm('清除存档？', '未完成的这一局会被删掉。').then((ok) => {
       if (!ok) return;
       S.clear(platform.storage); this.saved = null; this.refresh();
     });
   },
   goHome() {
-    this.persist();
+    this.save();
     this.saved = S.load(platform.storage);
     this.life = null; this.screen = 'home';
     this.render();
   },
-  go(screen) { this.screen = screen; this.render(); },
+  go(view) { this.view = view; this.render(); },
+  openCountry(cid) { this.countryId = cid; this.view = 'country'; this.render(); },
 
   // ---- 对局 ----
-  act(name, payload) {
-    const res = this.life.act(name, payload || {});
-    if (res && res.ok === false) this.r.showToast(res.reason || '做不了');
-    this.persist();
-    this.refresh();
-  },
-  confirmAct(title, content, name, payload) {
-    platform.confirm(title, content).then((ok) => { if (ok) this.act(name, payload); });
-  },
-  advance() {
-    if (!this.life.advance()) { this.render(); return; }
-    this.persist();
+  dropToken(token, cid, stay) {
+    const life = this.life;
+    const name = life.countryView(cid).name;
+    const res = life.place(token, cid);
+    if (!res.ok) { this.toast(res.reason); return; }
     platform.vibrate();
-    this.render();
+    const label = { export: life.ind.physical ? '开始出口到' : '开通线上销售：', branch: '设立分公司：', factory: life.ind.physical ? '建工厂：' : '建数据中心：', campaign: '营销战役：', exit: '撤出一级：' }[token];
+    this.toast(`${label}${name}${token === 'exit' ? `，回收 ${F.usd(-res.cost)}` : `，花了 ${F.usd(res.cost)}`}`);
+    this.save();
+    if (stay) this.refresh(); else this.refresh();
   },
-  buyIntel(id) {
-    if (!this.life.buyIntel(id)) this.r.showToast('买不了这份情报');
-    this.persist();
-    this.refresh();
+  finance(kind, amt) {
+    const res = kind === 'borrow' ? this.life.borrow(amt) : this.life.repay(amt);
+    if (!res.ok) this.toast(res.reason); else this.toast(`${kind === 'borrow' ? '借入' : '还款'} ${F.usd(res.amount)}`);
+    this.save(); this.refresh();
   },
-  choose(id) {
-    const idx = this.life.s.decisions.length;
-    if (this.life.choose(id)) {
-      this.resultIdx = idx;
-      this.persist();
-      platform.vibrate();
-      this.render();
-    } else {
-      this.r.showToast('这个选项现在选不了');
+  endYear() {
+    const life = this.life;
+    if (life.s.ap > 0 && !this._apWarned) {
+      this._apWarned = true;
+      this.toast(`还有 ${life.s.ap} 个行动点没用，再点一次就结束这一年`);
+      return;
     }
+    this._apWarned = false;
+    if (!life.endYear()) return;
+    platform.vibrate();
+    this.view = 'report';
+    this.save(); this.render();
   },
-  closeResult() { this.resultIdx = null; this.render(); },
+  closeReport() { this.view = 'board'; this.render(); },
+  chooseCase(id) {
+    const r = this.life.chooseCase(id);
+    if (!r) return;
+    platform.vibrate();
+    this.view = 'reveal';
+    this.save(); this.render();
+  },
+  closeReveal() { this.life.s.caseResult = null; this.view = 'board'; this.save(); this.render(); },
 
   // ---- 结局 ----
-  unlockReview() {
-    platform.showRewarded().then((ok) => {
-      if (ok) { this.reviewUnlocked = true; this.refresh(); } else this.r.showToast('看完视频才能解锁');
-    });
-  },
   share() { platform.shareNow(); },
-  restart(sameSeed) {
-    const seed = sameSeed ? this.life.s.seed : '';
+  restart(same) {
+    const s = this.life.s;
+    this.setup = { industry: s.industry, hq: s.hq, name: s.name, seed: same ? s.seed : '' };
     this.gamesDone += 1;
     if (config.ads.interstitialEvery && this.gamesDone % config.ads.interstitialEvery === 0) platform.showInterstitial();
-    this.start(seed);
+    this.start();
   },
-
   shareInfo() {
     const life = this.life;
     if (life && life.s.ended) {
-      const title = S.primaryTitle(life.s);
+      const s = life.s;
+      const title = (s.endings.find((e) => e.role === 'primary') || {}).name || '';
       return {
-        title: config.share.title.replace('{title}', title).replace('{seed}', life.s.seed),
-        query: `seed=${encodeURIComponent(life.s.seed)}`,
+        title: config.share.title.replace('{company}', s.name).replace('{title}', title).replace('{value}', F.usd(s.valuation)),
+        query: `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}`,
         imageUrl: sharecard.make(life) || undefined
       };
     }
-    const seed = life ? life.s.seed : '';
-    return { title: config.share.titleNoEnding, query: seed ? `seed=${encodeURIComponent(seed)}` : '' };
+    const s = life ? life.s : null;
+    return { title: config.share.titleNoEnding, query: s ? `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}` : '' };
   },
-
-  // 从分享卡进入：带种子，先停在首页让玩家确认（避免覆盖进行中的存档）
   handleQuery(q) {
-    const seed = q && q.seed ? S.normalizeSeed(decodeURIComponent(q.seed)) : '';
-    if (!seed) return;
-    this.seedInput = seed; this.invite = seed;
+    if (!q || !q.seed) return;
+    const seed = S.normalizeSeed(decodeURIComponent(q.seed));
+    const ind = S.D.INDUSTRIES.find((i) => i.id === q.ind);
+    const hq = ['US', 'CN', 'DE', 'JP', 'IN'].indexOf(q.hq) >= 0 ? q.hq : this.setup.hq;
+    this.setup.seed = seed; this.setup.hq = hq;
+    if (ind) { this.setup.industry = ind.id; this.setup.name = ind.names[0]; }
+    this.invite = { seed };
     if (this.screen === 'home') this.render();
   }
 };
@@ -143,14 +158,12 @@ const app = {
 function boot() {
   app.r = new Renderer(platform);
   platform.initAds();
-  app.adsOn = platform.hasRewarded();
   platform.setupShare(() => app.shareInfo());
   app.saved = S.load(platform.storage);
-  const q = platform.launchQuery();
   app.render();
-  app.handleQuery(q);
-  platform.onShow((query) => app.handleQuery(query));
-  platform.onHide(() => app.persist());
+  app.handleQuery(platform.launchQuery());
+  platform.onShow((q) => app.handleQuery(q));
+  platform.onHide(() => app.save());
 }
 
 boot();

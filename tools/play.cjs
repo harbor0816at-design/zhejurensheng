@@ -1,13 +1,11 @@
-// 自动化走查：在浏览器预览里用模拟触摸打完一整局，按页面类型截图，汇总报错。
-// 用法：node tools/bundle.cjs && node tools/play.cjs <截图目录> [种子] [宽x高]
+// 自动化走查（全球商业版）：模拟触摸打完一整局（含拖拽、慢点击），按页面截图，汇总报错。
+// 用法：node tools/bundle.cjs && node tools/play.cjs <截图目录> [种子] [行业] [总部] [宽x高]
 const { chromium } = require('/home/claude/.npm-global/lib/node_modules/playwright');
 const path = require('path');
 const fs = require('fs');
-
 (async () => {
-  const out = process.argv[2] || '/tmp/play';
-  const seed = process.argv[3] || 'LIFE-48291';
-  const [vw, vh] = (process.argv[4] || '390x844').split('x').map(Number);
+  const [out = '/tmp/play', seed = 'BIZ-48291', ind = 'electronics', hq = 'US', size = '390x844'] = process.argv.slice(2);
+  const [vw, vh] = size.split('x').map(Number);
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2 });
@@ -15,118 +13,84 @@ const fs = require('fs');
   page.on('pageerror', (e) => errors.push(String(e.stack || e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto('file://' + path.resolve(__dirname, '../preview/index.html'));
-  await page.evaluate((s) => { localStorage.clear(); window.__wxHooks.prompt = () => s; window.__wxHooks.confirm = () => true; }, seed);
+  await page.evaluate((s) => { localStorage.clear(); window.__wxHooks.prompt = (o) => (o.title === '种子码' ? s : null); window.__wxHooks.confirm = () => true; }, seed);
   await page.waitForTimeout(300);
-
+  const loc = (id) => page.evaluate((i) => window.__locate(i), id);
   const tap = async (id) => {
-    const p = await page.evaluate((i) => window.__locate(i), id);
-    if (!p) throw new Error('找不到可点区域 ' + id + '；当前：' + (await page.evaluate(() => window.__ids().join(','))));
-    await page.waitForTimeout(30);
-    await page.mouse.click(p.x, p.y);
-    await page.waitForTimeout(60);
+    const p = await loc(id);
+    if (!p) throw new Error('找不到 ' + id + '；当前：' + (await page.evaluate(() => window.__ids().join(','))));
+    await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.waitForTimeout(90); await page.mouse.up();
+    await page.waitForTimeout(80);
   };
-  const kind = () => page.evaluate(() => {
-    const a = window.__app;
-    if (a.screen !== 'play') return a.screen;
+  const drag = async (from, to) => {
+    const a = await loc(from); const b = await loc(to);
+    if (!a || !b) throw new Error('拖拽找不到 ' + from + ' / ' + to);
+    await page.mouse.move(a.x, a.y); await page.mouse.down();
+    for (let k = 1; k <= 8; k++) { await page.mouse.move(a.x + (b.x - a.x) * k / 8, a.y + (b.y - a.y) * k / 8); await page.waitForTimeout(16); }
+    await page.waitForTimeout(60); await page.mouse.up(); await page.waitForTimeout(80);
+  };
+  const state = () => page.evaluate(() => {
+    const a = window.__app; if (a.screen !== 'play') return { k: a.screen };
     const s = a.life.s;
-    if (a.resultIdx !== null) return 'result';
-    if (s.ended) return 'ending';
-    if (s.pending.length) return 'decision';
-    return 'year';
+    const k = a.view === 'report' ? 'report' : a.view === 'reveal' && s.caseResult ? 'reveal' : s.caseId ? 'case' : s.ended ? 'ending' : a.view;
+    return { k, year: s.year, ap: s.ap };
   });
   const shots = {};
   const shot = async (name, scrolls) => {
-    await page.waitForTimeout(260);
+    await page.waitForTimeout(250);
     await page.screenshot({ path: `${out}/${name}.png` });
     for (let i = 1; i <= (scrolls || 0); i++) {
-      const more = await page.evaluate((k) => { const r = window.__app.r; if (r.maxScroll <= 0) return false; r.scrollTo(r.H * 0.75 * k); r.layout(); r.draw(); return r.scrollY < r.maxScroll || k === 1; }, i);
-      await page.waitForTimeout(80);
-      await page.screenshot({ path: `${out}/${name}-${i}.png` });
+      const more = await page.evaluate((k) => { const r = window.__app.r; if (r.maxScroll <= 0) return false; r.scrollTo(r.H * 0.7 * k); r.layout(); r.draw(); return true; }, i);
       if (!more) break;
+      await page.waitForTimeout(60);
+      await page.screenshot({ path: `${out}/${name}-${i}.png` });
     }
     await page.evaluate(() => window.__app.r.scrollTo(0));
   };
 
-  await tap('seed-input');
-  await page.waitForTimeout(100);
+  await shot('01-home', 2);
+  const tapIf = async (id) => { if ((await page.evaluate(() => window.__ids())).includes(id)) await tap(id); };
+  await tap('ind-' + ind); await tapIf('hq-' + hq); await tap('seed-input'); await page.waitForTimeout(100);
   await tap('start');
-  await shot('02-opening');
-  await tap('go');
-
-  let steps = 0; let decisions = 0; let intelBought = 0; let actions = 0;
-  while (steps++ < 600) {
-    const k = await kind();
-    if (k === 'ending') break;
-    if (k === 'decision') {
-      const v = await page.evaluate(() => window.__app.life.view());
-      if (!shots.decision) { shots.decision = 1; await shot('03-decision', 2); }
-      const intel = v.intel.find((x) => !x.bought && x.affordable);
-      if (intel && decisions % 3 === 0) {
-        await tap('buy-intel-' + intel.id); intelBought++;
-        if (!shots.intel) { shots.intel = 1; await shot('04-decision-intel', 2); }
-        continue;
-      }
-      if (v.crisis && !shots.crisis) { shots.crisis = 1; await shot('09-crisis'); }
-      const opts = v.options.filter((o) => o.enabled);
-      const pick = opts[(decisions * 7 + steps) % opts.length];
-      await tap('opt-' + pick.id); decisions++;
-      continue;
-    }
-    if (k === 'result') {
-      if (!shots.result) { shots.result = 1; await shot('05-result'); }
-      await tap('result-next');
-      continue;
-    }
-    if (k === 'year') {
-      const age = await page.evaluate(() => window.__app.life.s.age);
-      if (!shots.year && age >= 20) { shots.year = 1; await shot('06-year', 3); }
-      if (age === 24) {
-        await tap('toggle-ledger'); await tap('toggle-money');
-        const ids0 = await page.evaluate(() => window.__ids());
-        if (ids0.includes('prod-index_fund')) await tap('prod-index_fund');
-        const ids = await page.evaluate(() => window.__ids());
-        const buy = ids.find((i) => /^buy-index_fund-10000$/.test(i));
-        if (buy) { await tap(buy); actions++; }
-        await tap('mix-aggressive'); actions++;
-        await shot('07-year-money', 4);
-        await tap('toggle-money');
-      }
-      const hasVenture = await page.evaluate(() => !!(window.__app.life.s.venture && window.__app.life.s.venture.active));
-      if (hasVenture && !shots.venture) {
-        shots.venture = 1;
-        await tap('v-hire'); actions++;
-        await shot('08-venture');
-      }
-      if (!shots.house && age >= 30) {
-        const can = await page.evaluate(() => window.__app.life.canBuyHouse().ok && !(window.__app.life.s.assets.housing_market_value > 0));
-        if (can) {
-          shots.house = 1;
-          await tap('toggle-money'); await tap('buy-house'); await page.waitForTimeout(150);
-          const owned = await page.evaluate(() => window.__app.life.s.assets.housing_market_value > 0);
-          if (!owned) throw new Error('买房确认后没有生效');
-          actions++; await shot('14-after-house', 2); await tap('toggle-money');
+  let steps = 0; let drags = 0; let cases = 0; let caseIdx = 0;
+  const plan = { 1995: [['export', 'UK'], ['export', 'DE']], 1996: [['branch', 'UK']], 1997: [['campaign', hq]], 1998: [['export', 'CN'], ['export', 'JP']], 2000: [['factory', 'VN']], 2002: [['branch', 'CN']], 2004: [['export', 'IN'], ['branch', 'DE']], 2006: [['export', 'BR'], ['export', 'MX']], 2009: [['branch', 'JP']], 2012: [['branch', 'IN']], 2016: [['factory', 'MX']] };
+  while (steps++ < 400) {
+    const st = await state();
+    if (st.k === 'ending') break;
+    if (st.k === 'board') {
+      if (!shots.board) { shots.board = 1; await shot('02-board', 1); }
+      for (const [t, c] of plan[st.year] || []) {
+        const ok = await page.evaluate(([t, c]) => window.__app.life.check(t, c).ok, [t, c]);
+        if (ok) {
+          const before = await page.evaluate(() => window.__app.life.s.ap);
+          await drag('token-' + t, 'tile-' + c); drags++;
+          const after = await page.evaluate(() => window.__app.life.s.ap);
+          if (after !== before - 1) throw new Error(`拖拽 ${t}→${c} 没生效`);
         }
       }
-      await tap('advance');
+      if (st.year === 1996 && !shots.country) { shots.country = 1; await tap('tile-UK'); await shot('03-country', 2); await tap('back'); }
+      if (st.year === 1999 && !shots.strategy) { shots.strategy = 1; await tap('strategy'); await tapIf('rnd-high'); await shot('04-strategy', 1); await tap('back'); }
+      if (st.year === 2001) await shot('05-board-2001');
+      await tap('end-year');
+      if ((await state()).k === 'board') await tap('end-year'); // 有剩余行动点时需要确认第二次
       continue;
     }
-    throw new Error('未知页面 ' + k);
+    if (st.k === 'case') {
+      if (!shots.case) { shots.case = 1; await shot('06-case', 2); }
+      const opts = await page.evaluate(() => window.__app.life.caseView().options.map((o) => o.id));
+      await tap('case-' + opts[caseIdx++ % opts.length]); cases++;
+      continue;
+    }
+    if (st.k === 'reveal') { if (!shots.reveal) { shots.reveal = 1; await shot('07-reveal', 2); } await tap('reveal-next'); continue; }
+    if (st.k === 'report') { if (!shots.report && st.year >= 1999) { shots.report = 1; await shot('08-report', 2); } await tap('report-next'); continue; }
+    if (st.k === 'country' || st.k === 'strategy') { await tap('back'); continue; }
+    throw new Error('未知页面 ' + JSON.stringify(st));
   }
-  await shot('10-ending', 6);
-  // 解锁完整复盘 + 分享
-  await tap('unlock-review');
-  await shot('11-ending-review', 3);
+  await shot('09-ending', 6);
   await tap('share');
-  const summary = await page.evaluate(() => {
-    const s = window.__app.life.s;
-    return { seed: s.seed, age: s.age, endings: s.endings.map((e) => e.name), decisions: window.__app.life.decisionCounts(), nw: Math.round(s.net_worth), anomalies: s.anomalies, shared: window.__wxHooks.shared.map((x) => ({ title: x.title, query: x.query, img: !!x.imageUrl })) };
-  });
-  // 分享卡图片
   const img = await page.evaluate(() => (window.__wxHooks.shared[0] || {}).imageUrl || '');
-  if (img.startsWith('data:image/png')) fs.writeFileSync(`${out}/12-sharecard.png`, Buffer.from(img.split(',')[1], 'base64'));
-  // 回首页：应出现「继续存档」以外的状态（本局已结束），再测分享进入
-  await tap('home');
-  await shot('13-home-after');
-  console.log(JSON.stringify({ steps, decisions, intelBought, actions, summary, errors }, null, 2));
+  if (img.startsWith('data:image/png')) fs.writeFileSync(`${out}/10-sharecard.png`, Buffer.from(img.split(',')[1], 'base64'));
+  const summary = await page.evaluate(() => { const s = window.__app.life.s; return { name: s.name, valuation: Math.round(s.valuation), endings: s.endings.map((e) => e.name), cases: s.caseLog.length, restructures: s.restructures, shared: window.__wxHooks.shared.map((x) => ({ t: x.title, q: x.query })) }; });
+  console.log(JSON.stringify({ steps, drags, cases, summary, errors }, null, 2));
   await browser.close();
-})().catch((e) => { console.error('FAIL', e); process.exit(1); });
+})().catch((e) => { console.error('FAIL', e.message); process.exit(1); });

@@ -18,6 +18,8 @@
       { "type": "folder", "value": "docs" },
       { "type": "folder", "value": "tools" },
       { "type": "folder", "value": "preview" },
+      { "type": "folder", "value": "legacy" },
+      { "type": "folder", "value": "dist" },
       { "type": "file", "value": "README.md" }
     ]
   },

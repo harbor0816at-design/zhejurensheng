@@ -305,7 +305,7 @@ class Flow {
     return this;
   }
 
-  hit(x, y, w, h, onTap, id) { this.hits.push({ x, y, w, h, r: 8, onTap, id }); }
+  hit(x, y, w, h, onTap, id, extra) { this.hits.push(Object.assign({ x, y, w, h, r: 8, onTap, id }, extra || {})); }
 }
 
 // ---------------- 渲染器 ----------------
@@ -394,6 +394,7 @@ class Renderer {
     if (!opts || !opts.keepScroll) this.scrollY = 0;
     this.vel = 0;
     this.fade = opts && opts.noFade ? 1 : 0;
+    if (!opts || !opts.keepScroll) this.toast = null; // 换页时清掉旧提示
     this.invalidate();
   }
   invalidate() { this.dirty = true; }
@@ -474,6 +475,7 @@ class Renderer {
       roundRect(ctx, this.W - 4, by, 3, bh, 1.5); ctx.fill();
     }
     ctx.globalAlpha = 1;
+    this.drawDrag(ctx);
     // 提示
     if (this.toast) {
       if (Date.now() > this.toast.until) this.toast = null;
@@ -492,7 +494,7 @@ class Renderer {
 
   drawPressed(ctx, hits, layer) {
     const t = this.touch;
-    if (!t || t.moved || !t.hit || t.layer !== layer) return;
+    if (!t || t.moved || t.dragging || !t.hit || t.layer !== layer) return;
     const h = hits.find((x) => (t.hit.id ? x.id === t.hit.id : Math.abs(x.x - t.hit.x) < 1 && Math.abs(x.y - t.hit.y) < 1)) || t.hit;
     ctx.fillStyle = 'rgba(15,23,42,0.10)';
     roundRect(ctx, h.x, h.y, h.w, h.h, h.r || 8); ctx.fill();
@@ -511,6 +513,7 @@ class Renderer {
       this.dirty = true;
     }
     if (this.toast) this.dirty = true;
+    if (this.page && this.page.animate) this.dirty = true;
     this.lastT = now;
     if (this.dirty) {
       this.dirty = false;
@@ -537,6 +540,55 @@ class Renderer {
     return null;
   }
 
+  // 拖拽落点：正文里带 drop 的区域
+  findDrop(x, y) {
+    const L = this.layoutCache;
+    if (!L || y < L.hdrH || y > this.H - L.footH) return null;
+    const py = y + this.scrollY;
+    for (let i = L.body.hits.length - 1; i >= 0; i--) {
+      const h = L.body.hits[i];
+      if (h.drop && x >= h.x && x <= h.x + h.w && py >= h.y && py <= h.y + h.h) return h;
+    }
+    return null;
+  }
+
+  drawDrag(ctx) {
+    const t = this.touch;
+    if (!t || !t.dragging || t.px === undefined) return;
+    const L = this.layoutCache;
+    const d = t.dragging;
+    // 当前停留的落点
+    if (t.over) {
+      const h = t.over;
+      const verdict = h.accepts ? h.accepts(d) : { ok: true };
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, L.hdrH, this.W, this.H - L.footH - L.hdrH); ctx.clip();
+      ctx.translate(0, -this.scrollY);
+      roundRect(ctx, h.x - 2, h.y - 2, h.w + 4, h.h + 4, (h.r || 12) + 2);
+      ctx.lineWidth = 3; ctx.strokeStyle = verdict.ok ? '#22c55e' : '#f87171'; ctx.stroke();
+      ctx.fillStyle = verdict.ok ? 'rgba(34,197,94,0.12)' : 'rgba(248,113,113,0.12)'; ctx.fill();
+      ctx.restore();
+      // 提示条
+      const msg = verdict.ok ? (verdict.label || '松手放下') : (verdict.reason || '这里放不了');
+      const f = T.font(13, 600);
+      const tw = Math.min(this.W - 24, this.m.width(msg, f) + 24);
+      const tx = (this.W - tw) / 2; const ty = L.hdrH + 8;
+      ctx.fillStyle = verdict.ok ? 'rgba(21,128,61,0.95)' : 'rgba(185,28,28,0.95)';
+      roundRect(ctx, tx, ty, tw, 30, 15); ctx.fill();
+      ctx.font = f; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      ctx.fillText(msg, this.W / 2, ty + 20, tw - 16);
+    }
+    // 跟手的行动块
+    const gw = 76; const gh = 40;
+    const gx = t.px - gw / 2; const gy = t.py - gh - 18;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+    ctx.fillStyle = d.color || T.c.accent; roundRect(ctx, gx, gy, gw, gh, 12); ctx.fill();
+    ctx.restore();
+    ctx.font = T.font(14, 700); ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(d.label || '', t.px, gy + 25);
+  }
+
   bindTouch() {
     const pt = (e) => {
       const t = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]) || e;
@@ -553,7 +605,16 @@ class Renderer {
       const t = this.touch; if (!t) return;
       const p = pt(e);
       const dy = p.y - t.sy;
-      if (!t.moved && (Math.abs(dy) > 8 || Math.abs(p.x - t.sx) > 12)) t.moved = true;
+      if (!t.moved && (Math.abs(dy) > 8 || Math.abs(p.x - t.sx) > 8)) {
+        t.moved = true;
+        if (t.hit && t.hit.drag) t.dragging = t.hit.drag;
+      }
+      if (t.dragging) {
+        t.px = p.x; t.py = p.y;
+        t.over = this.findDrop(p.x, p.y);
+        this.invalidate();
+        return;
+      }
       if (t.moved && t.layer !== 'footer' && t.layer !== 'header') {
         const now = Date.now();
         const dt = Math.max(1, now - t.lt);
@@ -566,6 +627,15 @@ class Renderer {
     const end = (e, cancel) => {
       const t = this.touch; this.touch = null;
       if (!t) return;
+      if (t.dragging) {
+        const p = pt(e);
+        const target = cancel ? null : this.findDrop(p.x, p.y);
+        if (target && target.drop) {
+          try { target.drop(t.dragging); } catch (err) { console.error(err); this.showToast('出错了：' + (err && err.message)); }
+        }
+        this.invalidate();
+        return;
+      }
       if (!cancel && !t.moved && t.hit && t.hit.onTap) {
         const p = pt(e);
         const f = this.findHit(p.x, p.y);

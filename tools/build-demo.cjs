@@ -10,7 +10,7 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>这局人生 · MVP 试玩</title>
+<title>这局人生 · 全球商业版试玩</title>
 <style>html,body{margin:0;padding:0;height:100%;background:#020617;overflow:hidden;overscroll-behavior:none}canvas{display:block}</style>
 </head>
 <body>
