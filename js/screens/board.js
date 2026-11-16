@@ -51,8 +51,12 @@ function drawTile(f, life, cid, x, y, w, h, app) {
 
   f.hit(x, y, w, h, () => app.openCountry(cid), 'tile-' + cid, {
     r: 14,
-    drop: (d) => app.dropToken(d.id, cid),
+    drop: (d) => (d.id.indexOf('card:') === 0 ? app.playCard(d.id.slice(5), cid) : app.dropToken(d.id, cid)),
     accepts: (d) => {
+      if (d.id.indexOf('card:') === 0) {
+        const cc = life.cardCheck(d.id.slice(5), cid);
+        return cc.ok ? { ok: true, label: `${d.label} → ${cv.name}${cc.cost ? `，花 ${F.usd(cc.cost)}` : ''}` } : cc;
+      }
       const chk = life.check(d.id, cid);
       if (!chk.ok) return chk;
       const verb = d.id === 'exit' ? `撤出 ${cv.name}，回收 ${F.usd(-chk.cost)}` : `${d.label} → ${cv.name}，花 ${F.usd(chk.cost)}`;
@@ -83,6 +87,12 @@ function board(app) {
         lines.slice(0, 2).forEach((ln, i) => f.push({ t: 'text', x: f.x + 54, y: y + 23 + i * 19, s: ln, font: T.font(13, 500), color: '#fef3c7' }));
         f.y += h + 10;
       }
+      // 对手动态和公司新闻
+      if (s.news && s.news.length) {
+        f.card({ bg: 'rgba(255,255,255,0.06)', pad: 12, after: 10 }, (c) => {
+          s.news.slice(0, 4).forEach((n) => c.text('· ' + n, { size: 12, color: '#e2e8f0', lh: 1.55 }));
+        });
+      }
       // 棋盘
       const gap = 8;
       const tw = (f.w - gap * 2) / 3;
@@ -93,19 +103,59 @@ function board(app) {
         drawTile(f, life, cid, f.x + col * (tw + gap), f.y + row * (th + gap), tw, th, app);
       });
       f.y += 3 * th + 2 * gap + 10;
-      f.text('把下方的行动块拖到国家上；点国家看详情和成本。★ 是总部。', { size: 11, color: T.c.onDarkMuted, align: 'center', lh: 1.6 });
+      f.text('把下方的策略卡和行动块拖到国家上；公司卡点一下打出。★ 是总部。', { size: 11, color: T.c.onDarkMuted, align: 'center', lh: 1.6 });
+      // 对手
+      f.card({ after: 10 }, (c) => {
+        c.sectionTitle('对手', `你的产品力 ${Math.round(s.quality)}`);
+        const rv = life.rivalsView();
+        rv.filter((r) => r.alive).forEach((r) => {
+          const y = c.y;
+          c.push({ t: 'text', x: c.x, y: y + 15, s: r.name, font: T.font(13, 700), color: T.c.ink });
+          c.push({ t: 'text', x: c.x + 78, y: y + 15, s: r.home, font: T.font(11), color: T.c.muted });
+          const bw = c.w - 190;
+          c.push({ t: 'rect', x: c.x + 112, y: y + 6, w: bw, h: 10, r: 5, fill: T.c.soft });
+          c.push({ t: 'rect', x: c.x + 112, y: y + 6, w: bw * Math.min(1, r.strength / 3), h: 10, r: 5, fill: r.strength > 2 ? T.c.neg : '#f59e0b' });
+          c.push({ t: 'text', x: c.x + c.w, y: y + 15, s: `技术 ${r.tech}`, font: T.font(12, 600), color: r.tech > s.quality ? T.c.neg : T.c.pos, align: 'right' });
+          c.y += 24;
+        });
+        const dead = rv.filter((r) => !r.alive);
+        if (dead.length) c.text('出局：' + dead.map((r) => `${r.name}（${r.fate}）`).join('、'), { size: 11, color: T.c.faint, lh: 1.5 });
+        c.text('对手每年会扩张、打价格战、出新技术，也会在危机里倒下。条越长越难打；技术比你的产品力高，你的份额会被蚕食。', { size: 11, color: T.c.muted, lh: 1.5 });
+      });
     },
     footer(f) {
+      // 手牌
+      const hand = life.cardsView();
+      {
+        const gap = 6; const n = Math.max(5, hand.length) + 1;
+        const w = (f.w - gap * (n - 1)) / n; const y = f.y; const h = 64;
+        hand.forEach((cd, i) => {
+          const x = f.x + i * (w + gap);
+          const dis = life.s.ap <= 0;
+          f.push({ t: 'rect', x, y, w, h, r: 10, fill: dis ? 'rgba(255,255,255,0.06)' : '#ffffff' });
+          f.push({ t: 'rect', x, y, w, h: 5, r: 2, fill: cd.color });
+          icon(f.push.bind(f), cd.icon, x + w / 2 - 9, y + 11, 18, dis ? '#64748b' : cd.color);
+          const nm = cd.name.length > 4 ? [cd.name.slice(0, 4), cd.name.slice(4, 8)] : [cd.name];
+          nm.forEach((ln, k) => f.push({ t: 'text', x: x + w / 2, y: y + 43 + k * 13 - (nm.length - 1) * 5, s: ln, font: T.font(11, 700), color: dis ? '#64748b' : T.c.ink, align: 'center' }));
+          f.hit(x, y, w, h, () => app.openCard(cd.id), 'card-' + cd.id, dis || cd.target !== 'country' ? { r: 10 } : { r: 10, drag: { id: 'card:' + cd.id, label: cd.name, color: cd.color } });
+        });
+        const x = f.x + (n - 1) * (w + gap);
+        f.push({ t: 'rect', x, y, w, h, r: 10, fill: 'rgba(255,255,255,0.08)', stroke: 'rgba(255,255,255,0.18)' });
+        f.push({ t: 'text', x: x + w / 2, y: y + 29, s: '换牌', font: T.font(12, 700), color: '#e2e8f0', align: 'center' });
+        f.push({ t: 'text', x: x + w / 2, y: y + 46, s: '1 行动点', font: T.font(10), color: T.c.onDarkMuted, align: 'center' });
+        f.hit(x, y, w, h, () => app.redraw(), 'redraw', { r: 10 });
+        f.y += h + 8;
+      }
       const ts = tokens(life);
       const gap = 6;
       const w = (f.w - gap * (ts.length - 1)) / ts.length;
-      const y = f.y; const h = 58;
+      const y = f.y; const h = 48;
       ts.forEach((tk, i) => {
         const x = f.x + i * (w + gap);
         const dis = life.s.ap <= 0;
         f.push({ t: 'rect', x, y, w, h, r: 12, fill: dis ? 'rgba(255,255,255,0.06)' : tk.color });
-        icon(f.push.bind(f), tk.icon, x + w / 2 - 10, y + 8, 20, dis ? 'rgba(255,255,255,0.3)' : '#ffffff');
-        f.push({ t: 'text', x: x + w / 2, y: y + 47, s: tk.label, font: T.font(11, 600), color: dis ? 'rgba(255,255,255,0.35)' : '#fff', align: 'center' });
+        icon(f.push.bind(f), tk.icon, x + w / 2 - 8, y + 6, 16, dis ? 'rgba(255,255,255,0.3)' : '#ffffff');
+        f.push({ t: 'text', x: x + w / 2, y: y + 39, s: tk.label, font: T.font(11, 600), color: dis ? 'rgba(255,255,255,0.35)' : '#fff', align: 'center' });
         f.hit(x, y, w, h, () => app.toast(dis ? '今年的行动点用完了，结束这一年吧' : `按住「${tk.label}」拖到国家上：${tk.desc}`), 'token-' + tk.id, dis ? {} : { r: 12, drag: { id: tk.id, label: tk.label, color: tk.color } });
       });
       f.y += h + 10;

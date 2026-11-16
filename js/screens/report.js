@@ -51,6 +51,8 @@ function reportPage(app) {
         if (r.bankrupt) c.title('公司破产了', { size: 24, color: T.c.neg });
         c.title(r.net >= 0 ? `赚了 ${F.usd(r.net)}` : `亏了 ${F.usd(-r.net)}`, { size: 22, color: r.net >= 0 ? T.c.pos : T.c.neg });
         if (r.headline) c.text(r.headline, { size: 12, color: T.c.muted, lh: 1.55 });
+        (r.news || []).forEach((n) => c.text('· ' + n, { size: 12, color: T.c.body, lh: 1.5 }));
+        if (prev && r.valuation < prev.valuation * 0.8 && !r.bankrupt) c.text(`估值下跌 ${Math.round((1 - r.valuation / Math.max(1, prev.valuation)) * 100)}%：${r.growth < 0 ? '收入在萎缩，' : ''}${r.mood < -0.15 ? '市场情绪悲观，' : ''}投资人在用脚投票。`, { size: 12, weight: 700, color: T.c.neg, lh: 1.55 });
         c.gap(8);
         const dv = prev ? r.valuation - prev.valuation : 0;
         c.tiles([
@@ -115,11 +117,14 @@ function curve(c, life) {
   const h = life.s.history;
   if (h.length < 2) return;
   c.custom(150, (push, x, y, w, H) => {
-    const vals = h.map((p) => p.valuation);
+    // 按世界经济规模折算到 2024 年：去掉“水涨船高”，真实的起落才看得出来
+    const W = (yy) => D.COUNTRIES.reduce((acc, cc) => acc + life.gdp(cc.id, yy), 0);
+    const w24 = W(2024);
+    const vals = h.map((p) => p.valuation / (W(p.year) / w24));
     const hi = Math.max(...vals, 1);
     const pos = vals.filter((v) => v > 0);
     const lo = Math.max(hi / 1e5, Math.min(...(pos.length ? pos : [1])));
-    const logScale = hi / lo > 50; // 跨度太大时用对数坐标，早年的起伏也看得见
+    const logScale = false;
     const X = (i) => x + 8 + i / (h.length - 1) * (w - 16);
     const Y = (v) => {
       if (!logScale) return y + H - 24 - v / hi * (H - 44);
@@ -127,16 +132,16 @@ function curve(c, life) {
       return y + H - 24 - t * (H - 44);
     };
     push({ t: 'rect', x, y, w, h: H, r: 10, fill: T.c.soft });
-    const pts = h.map((p, i) => [X(i), Y(p.valuation)]);
+    const pts = h.map((p, i) => [X(i), Y(vals[i])]);
     push({ t: 'poly', pts: [[X(0), Y(0)]].concat(pts, [[X(h.length - 1), Y(0)]]), fill: 'rgba(37,99,235,0.12)' });
     push({ t: 'poly', pts, color: T.c.accent, lw: 2 });
-    h.forEach((p, i) => { if (p.restructured) push({ t: 'circle', x: X(i), y: Y(p.valuation), r: 4, fill: T.c.neg }); });
+    h.forEach((p, i) => { if (p.restructured) push({ t: 'circle', x: X(i), y: Y(vals[i]), r: 4, fill: T.c.neg }); });
     const lastP = h[h.length - 1];
     if (lastP.bankrupt) { const bx = X(h.length - 1); const by = Y(0); push({ t: 'line', x1: bx - 6, y1: by - 6, x2: bx + 6, y2: by + 6, color: T.c.neg, lw: 3 }); push({ t: 'line', x1: bx - 6, y1: by + 6, x2: bx + 6, y2: by - 6, color: T.c.neg, lw: 3 }); }
     if (logScale) push({ t: 'text', x: x + w - 8, y: y + 16, s: '对数坐标', font: T.font(10), color: T.c.faint, align: 'right' });
     const fx = h.findIndex((p) => p.year === 2025);
     if (fx > 0) { push({ t: 'line', x1: X(fx), y1: y + 22, x2: X(fx), y2: y + H - 22, color: 'rgba(109,40,217,0.35)', lw: 1 }); push({ t: 'text', x: X(fx) + 4, y: y + 30, s: '推演 →', font: T.font(10), color: T.c.violet }); }
-    life.s.caseLog.forEach((cs) => { const i = cs.year - h[0].year; if (i >= 0 && i < h.length) push({ t: 'circle', x: X(i), y: Y(h[i].valuation), r: 3.5, fill: '#f59e0b' }); });
+    life.s.caseLog.forEach((cs) => { const i = cs.year - h[0].year; if (i >= 0 && i < h.length) push({ t: 'circle', x: X(i), y: Y(vals[i]), r: 3.5, fill: '#f59e0b' }); });
     push({ t: 'text', x: x + 8, y: y + 16, s: F.usd(hi, { short: true }), font: T.font(10), color: T.c.muted });
     push({ t: 'text', x: x + 8, y: y + H - 6, s: String(h[0].year), font: T.font(10), color: T.c.muted });
     push({ t: 'text', x: x + w - 8, y: y + H - 6, s: String(h[h.length - 1].year), font: T.font(10), color: T.c.muted, align: 'right' });
@@ -167,7 +172,7 @@ function endingPage(app) {
         ], 2, { after: 0 });
       });
       f.card({}, (c) => {
-        c.sectionTitle(`${s.year - (s.startYear || 1995) + 1} 年估值曲线`, '橙点 = 案例，红点 = 重组');
+        c.sectionTitle(`${s.year - (s.startYear || 1995) + 1} 年估值曲线`, '按 2024 年经济规模折算');
         curve(c, life);
         c.sectionTitle('最终布局');
         const lv = life.ind.physical ? ['—', '出口', '分公司', '工厂'] : ['—', '线上', '分公司', '数据中心'];

@@ -3,6 +3,7 @@ const T = require('../ui/theme.js');
 const F = require('../game/format.js');
 const { icon } = require('../ui/icons.js');
 const { header, status, tokens } = require('./common.js');
+const { D } = require('../game/session.js');
 
 function countryPage(app) {
   const life = app.life;
@@ -36,6 +37,8 @@ function countryPage(app) {
           c.row('顾客买的档次', { budget: '平价款', mid: '主流款', premium: '高端款' }[cv.line] || '—');
         }
         c.row('收入水平', cv.income >= 2.6 ? '高' : cv.income >= 1.7 ? '中' : '低');
+        const rv = life.rivalsView().filter((r) => r.alive);
+        if (rv.length) c.row('当地对手', rv.map((r) => `${r.name} ${r.power[cid].toFixed(1)}`).join(' · '), { size: 12 });
         c.gap(8);
         c.sectionTitle('行动', `今年还有 ${life.s.ap} 个行动点`);
         tokens(life).forEach((tk) => {
@@ -183,3 +186,66 @@ function strategyPage(app) {
 }
 
 module.exports = { countryPage, strategyPage };
+
+// 策略卡详情与结果
+function cardPage(app) {
+  const life = app.life;
+  const id = app.cardId;
+  const c = life.card(id);
+  return {
+    header: header(app),
+    body(f) {
+      status(f, life);
+      f.card({ stripe: c.color }, (k) => {
+        k.eyebrow(c.target === 'country' ? '国家卡 · 拖到国家上，或在下面选一个国家' : '公司卡', c.color);
+        k.title(c.name, { size: 24 });
+        k.text(c.desc, { size: 14, color: T.c.body, lh: 1.65 });
+        if (c.tags && c.tags.length) k.text(c.tags.map((t) => '#' + t).join('  '), { size: 12, color: T.c.violet, lh: 1.6 });
+      });
+      if (c.target === 'company') {
+        const chk = life.cardCheck(id, null);
+        f.card({}, (k) => {
+          k.row('花费', chk.ok ? (chk.cost ? F.usd(chk.cost) : '免费') : '—');
+          if (!chk.ok) k.text(chk.reason, { size: 13, color: T.c.neg, lh: 1.6 });
+          k.button('打出这张牌（1 行动点）', () => app.playCard(id, null), { id: 'play-card', disabled: !chk.ok, after: 0 });
+        });
+      } else {
+        f.card({}, (k) => {
+          k.sectionTitle('打到哪个国家');
+          D.COUNTRIES.forEach((cc) => {
+            const chk = life.cardCheck(id, cc.id);
+            const y = k.y; const h = 44;
+            k.push({ t: 'rect', x: k.x, y, w: k.w, h, r: 10, fill: chk.ok ? T.c.soft : '#f8fafc' });
+            k.push({ t: 'rect', x: k.x + 10, y: y + 14, w: 4, h: 16, r: 2, fill: cc.color });
+            k.push({ t: 'text', x: k.x + 22, y: y + 27, s: cc.name, font: T.font(14, 700), color: chk.ok ? T.c.ink : T.c.faint });
+            k.push({ t: 'text', x: k.x + k.w - 10, y: y + 27, s: chk.ok ? (chk.cost ? F.usd(chk.cost) : '免费') : chk.reason, font: T.font(11, chk.ok ? 600 : 400), color: chk.ok ? T.c.accent : T.c.neg, align: 'right' });
+            if (chk.ok) k.hit(k.x, y, k.w, h, () => app.playCard(id, cc.id), 'play-' + cc.id, { r: 10 });
+            k.y += h + 6;
+          });
+        });
+      }
+    },
+    footer(f) { f.button('返回棋盘', () => app.go('board'), { kind: 'secondary', id: 'back', after: 0 }); }
+  };
+}
+
+function cardResultPage(app) {
+  const life = app.life;
+  const r = app.cardResult;
+  return {
+    header: header(app),
+    body(f) {
+      status(f, life);
+      f.card({ stripe: r.color }, (k) => {
+        k.eyebrow(`${r.name}${r.cname ? ' · ' + r.cname : ''}`, r.color);
+        k.title(r.title, { size: 22 });
+        String(r.text || '').split('\n').forEach((ln) => k.text(ln, { size: 14, color: T.c.body, lh: 1.65 }));
+        if (r.cost) k.row('花费', F.usd(r.cost), { size: 13 });
+      });
+    },
+    footer(f) { f.button('回到棋盘', () => app.go('board'), { id: 'card-ok', after: 0 }); }
+  };
+}
+
+module.exports.cardPage = cardPage;
+module.exports.cardResultPage = cardResultPage;

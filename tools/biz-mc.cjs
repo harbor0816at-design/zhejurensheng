@@ -13,7 +13,8 @@ const POLICIES = {
     const byMarket = D.COUNTRIES.map((c) => c.id).sort((a, b) => L.market(b, s.year) * L.access(b, s.year) - L.market(a, s.year) * L.access(a, s.year));
     for (const c of byMarket) tries.push(['export', c], ['branch', c]);
     if (L.ind.physical) for (const c of ['VN', 'CN', 'MX', 'IN']) tries.push(['factory', c]);
-    for (const [t, c] of tries) { if (s.ap <= 0) break; if (s.cash > L.check(t, c).cost * 1.5) L.place(t, c); }
+    for (const [t, c] of tries) { if (s.ap <= 1) break; if (s.cash > L.check(t, c).cost * 1.5) L.place(t, c); }
+    playCards(L, rnd, 1);
   },
   // 激进扩张：能升级就升级，高研发，大量营销
   aggressive(L, rnd) {
@@ -22,6 +23,7 @@ const POLICIES = {
     const ids = D.COUNTRIES.map((c) => c.id).sort(() => rnd() - 0.5);
     for (const c of ids) { if (s.ap <= 0) break; for (const t of ['factory', 'branch', 'export', 'campaign']) if (L.check(t, c).ok) { L.place(t, c); break; } }
     if (s.ap > 0) L.borrow(5e6);
+    playCards(L, rnd, 2);
   },
   // 随机玩家：连经营设置和资本运作也随机
   random(L, rnd) {
@@ -32,6 +34,7 @@ const POLICIES = {
     const ops = ['issueBond', 'raiseEquity', 'buyback', 'goPublic'];
     if (rnd() < 0.25) L[ops[Math.floor(rnd() * 4)]]();
     if (rnd() < 0.15) { const c = D.COUNTRIES[Math.floor(rnd() * 9)].id; if (L.acquireCheck(c).ok) L.acquire(c); }
+    playCards(L, rnd, 3);
     L.setRnd(['low', 'mid', 'high'][Math.floor(rnd() * 3)]); L.setPrice(['low', 'mid', 'premium'][Math.floor(rnd() * 3)]);
     for (let k = 0; k < 6 && s.ap > 0; k++) {
       const t = ['export', 'branch', 'factory', 'campaign', 'exit'][Math.floor(rnd() * (k < 5 ? 4 : 5))];
@@ -43,12 +46,21 @@ const POLICIES = {
   passive(L) { L.setRnd('mid'); }
 };
 
+// 随机打出手里的策略卡
+function playCards(L, rnd, n) {
+  for (let k = 0; k < n && L.s.ap > 0 && L.s.hand.length; k++) {
+    const id = L.s.hand[Math.floor(rnd() * L.s.hand.length)];
+    const c = L.card(id);
+    const cid = c.target === 'country' ? D.COUNTRIES[Math.floor(rnd() * 9)].id : null;
+    L.playCard(id, cid);
+  }
+}
 function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
 const res = {};
 let worst = 0;
 for (const pol of Object.keys(POLICIES)) {
-  const vals = []; let restr = 0; let bk = 0; const ends = {}; let cases = 0; const dialV = {};
+  const vals = []; let restr = 0; let bk = 0; let dd50 = 0; let downYears = 0; let cardsPlayed = 0; const ends = {}; let cases = 0; const dialV = {};
   const byInd = {}; const byFd = {}; const byY = {}; let evs = 0;
   for (let i = 0; i < N; i++) {
     const rnd = mulberry(i * 7919 + pol.length);
@@ -66,6 +78,9 @@ for (const pol of Object.keys(POLICIES)) {
       worst = Math.max(worst, Math.abs(L.s.report.check));
     }
     vals.push(L.s.valuation); if (L.s.restructures) restr++; if (L.s.bankrupt) bk++;
+    let peak = 0; let mdd = 0; const H = L.s.history;
+    for (let j = 0; j < H.length; j++) { const v = H[j].valuation; peak = Math.max(peak, v); if (peak > 0) mdd = Math.max(mdd, 1 - v / peak); if (j && v < H[j - 1].valuation) downYears++; }
+    if (mdd >= 0.5) dd50++; downYears += 0; cardsPlayed += H.length ? L.s.history.length : 0;
     const dk = L.s.world.dials.tech + '/' + L.s.world.dials.geo; (dialV[dk] = dialV[dk] || []).push(L.s.valuation);
     cases += L.s.caseLog.length; evs += L.s.caseLog.filter((c) => c.event).length;
     (byFd[founder] = byFd[founder] || []).push(L.s.valuation); (byY[startYear] = byY[startYear] || []).push(L.s.valuation);
@@ -75,7 +90,7 @@ for (const pol of Object.keys(POLICIES)) {
   const q = (a, p) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(p * b.length))]; };
   const fmt = (v) => (v >= 1e9 ? (v / 1e9).toFixed(1) + 'B' : (v / 1e6).toFixed(0) + 'M');
   console.log(`\n== ${pol}  估值 P10/P50/P90/max = ${fmt(q(vals, 0.1))} / ${fmt(q(vals, 0.5))} / ${fmt(q(vals, 0.9))} / ${fmt(Math.max(...vals))}  重组 ${(restr / N * 100).toFixed(1)}%  破产 ${(bk / N * 100).toFixed(1)}%  每局案例 ${(cases / N).toFixed(1)}`);
-  console.log(`   每局随机事件 ${(evs / N).toFixed(1)}`);
+  console.log(`   每局随机事件 ${(evs / N).toFixed(1)}  估值下跌年份占比 ${(downYears / Math.max(1, cardsPlayed) * 100).toFixed(0)}%  经历过腰斩 ${(dd50 / N * 100).toFixed(0)}%`);
   console.log('   分未来 P50：' + Object.entries(dialV).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
   console.log('   分出身 P50：' + Object.entries(byFd).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
   console.log('   分年代 P50：' + Object.entries(byY).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));

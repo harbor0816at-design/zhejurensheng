@@ -10,11 +10,13 @@ const { CASES_F } = require('./cases_future.js');
 const { CASES_F2 } = require('./cases_future2.js');
 const { EXTRA } = require('./options_extra.js');
 const { BIZ_EVENTS } = require('./events.js');
+const { CARDS } = require('./cards.js');
 const CASES = CASES1.concat(CASES2, CASES3, CASES_F, CASES_F2);
 for (const c of CASES) if (EXTRA[c.id] && !c.options.some((o) => o.id === 'x')) c.options.push(EXTRA[c.id]);
 const findCard = (id) => CASES.find((c) => c.id === id) || BIZ_EVENTS.find((c) => c.id === id);
 
-const VERSION = '3.0.0';
+const VERSION = '3.1.0';
+const NEG = 1.6; // 坏结果放大：错误决策要真疼
 const LEVELS = ['未进入', '出口', '分公司', '工厂'];
 const LEVELS_SW = ['未进入', '线上销售', '分公司', '数据中心'];
 const PW = [0, 0.35, 1.0, 1.25];                // 布局等级对吸引力的权重
@@ -26,6 +28,16 @@ const PRICE = { low: { attract: 1.25, mult: 0.88, brand: -0.5 }, mid: { attract:
 const DRIFT = { electronics: 2.5, beverage: 0.6, software: 2.0, auto: 1.6, apparel: 1.2, pharma: 1.4, energy: 2.2 };
 const PS = { electronics: 0.3, beverage: 0.6, software: 1.0, auto: 0.3, apparel: 0.7, pharma: 0.9, energy: 0.5 };
 const TAX = 0.22;
+// 对手公司名：前 3 个是开局就在的老对手，后 3 个是之后可能杀进来的新玩家
+const RIVAL_NAMES = {
+  electronics: ['巨鲸电子', '银河科技', '极光数码', '闪电智能', '米粒科技', '未来视界'],
+  beverage: ['海浪饮品', '红山食品', '冰川集团', '元气工坊', '果然鲜', '绿洲饮料'],
+  software: ['蜂巢网络', '天穹云', '零点软件', '深度求索者', '光年智能', '星火开源'],
+  auto: ['铁骑汽车', '疾风动力', '大地汽车', '电驰新能源', '无人智行', '飞马出行'],
+  apparel: ['潮汐服饰', '白鹭时装', '锦绣集团', '快衣', '极简库', '新织'],
+  pharma: ['长青制药', '曙光生物', '磐石医药', '基因方舟', 'AI 药研', '百岁生物'],
+  energy: ['烈日能源', '蓝海储能', '山风新能', '氢动未来', '聚变星', '光墙科技']
+};
 
 // ---------------- 随机 ----------------
 function fnv1a32(str) {
@@ -70,13 +82,14 @@ class BizLife {
       ownership: fd.ownership || 1, lossCarry: 0, restructures: 0, ended: false, bankrupt: null,
       policy: Object.assign({}, P.DEFAULT_POLICY, { lines: P.DEFAULT_POLICY.lines.slice() }), policyAt: {},
       wealth: 0, bonds: [], ipo: 0, yearOps: {}, deferred: null, eventSeen: {}, caseConsult: false, casePartner: false,
+      rivals: [], rmods: [], news: [], hand: [], played: [], projects: [], distressed: null, mood: 0, apBonusNext: 0,
       countries: {}, mods: [], flags: {}, fx: {},
       ap: 0, apMax: 3, actions: [], flows: null,
       caseId: null, caseCtx: null, caseResult: null, caseLog: [], lastCaseYear: 0,
       history: [], report: null, endings: [], valuation: 5e6, lastNI: 0, lastRev: 0, lastEBITDA: 0,
       rng: {}
     };
-    for (const k of ['macro', 'market', 'case', 'event', 'future']) s.rng[k] = fnv1a32(`${s.seed}|${VERSION}|${k}`);
+    for (const k of ['macro', 'market', 'case', 'event', 'future', 'deck', 'rival']) s.rng[k] = fnv1a32(`${s.seed}|${VERSION}|${k}`);
     s.world = F.generate(() => rngNext(s.rng, 'future'), ind.id);
     // 每国每年的小幅需求噪声（宏观流，开局一次性生成）
     s.noise = {};
@@ -86,6 +99,14 @@ class BizLife {
       s.countries[c.id] = { level: 0, share: 0, brand: 0, rev: 0, profit: 0, campaign: false };
       s.fx[c.id] = 1;
     }
+    // 三个老对手
+    const homes = ['US', 'CN', 'JP', 'DE', 'UK', 'IN'];
+    RIVAL_NAMES[ind.id].slice(0, 3).forEach((name, i) => {
+      const rh = homes[Math.floor(rngNext(s.rng, 'rival') * homes.length) % homes.length];
+      const power = {};
+      for (const c of D.COUNTRIES) power[c.id] = c.id === rh ? 1.6 : r2(0.6 + 0.6 * rngNext(s.rng, 'rival'));
+      s.rivals.push({ name, home: rh, power, tech: 48 + Math.round(rngNext(s.rng, 'rival') * 8), aggr: r2(0.3 + 0.35 * rngNext(s.rng, 'rival')), rate: 0.03, cap: 2.4, alive: true, since: startYear });
+    });
     const home = s.countries[hq];
     home.level = fd.homeLevel || 2; home.brand = fd.brand; home.share = 0;
     if (fd.foreign) { // 海归 / 外企分拆：开局就有海外据点
@@ -94,8 +115,8 @@ class BizLife {
     }
     const life = new BizLife(s);
     const A0 = life.attract(hq, s.year);
-    home.share = 0.6 * A0 / (A0 + ind.comp);
-    for (const c of D.COUNTRIES) if (c.id !== hq && s.countries[c.id].level > 0) { const A = life.attract(c.id, s.year); s.countries[c.id].share = 0.4 * A / (A + ind.comp); }
+    home.share = 0.6 * A0 / (A0 + life.compK(hq, s.year));
+    for (const c of D.COUNTRIES) if (c.id !== hq && s.countries[c.id].level > 0) { const A = life.attract(c.id, s.year); s.countries[c.id].share = 0.4 * A / (A + life.compK(c.id, s.year)); }
     life.beginYear();
     return life;
   }
@@ -272,8 +293,16 @@ class BizLife {
     if (fd.apBonus && s.year < sy + fd.apBonus) s.apMax += 1;
     if (s.trait === 'gambler') s.apMax += 1;
     if (s.policy.ceo === 'star' || (s.policy.ceo === 'pro' && s.lastRev >= 1e8)) s.apMax += 1;
+    s.apMax += s.apBonusNext || 0; s.apBonusNext = 0;
     s.ap = s.apMax;
-    s.yearOps = {};
+    s.yearOps = {}; s.news = []; s.played = [];
+    s.rmods = (s.rmods || []).filter((m) => m.to >= s.year);
+    if (s.year > sy) this.rivalsStep();
+    for (const p of s.projects) if (!p.done && s.year - p.start >= 2) {
+      p.done = s.year;
+      if (this.rand('deck') < 0.7) { this.quality(12); s.news.push('研发攻关成功：产品力 +12。今年打“新品发布会”效果翻倍。'); } else { this.quality(2); s.news.push('研发攻关没达到预期，只拿到一点小成果。'); }
+    }
+    this.drawHand();
     s.caseResult = null; s.caseConsult = false; s.casePartner = false;
     this.triggerCase();
   }
@@ -403,16 +432,15 @@ class BizLife {
         if (s.cash < 0) this.spend(0); // 现金不够时自动动用信用额度
         return null;
       }
-      case 'brand':
-        if (e.c) { const cs = s.countries[sub(e.c)]; cs.brand = clamp(cs.brand + e.v, 0, 100); } else for (const c of D.COUNTRIES) { const cs = s.countries[c.id]; if (cs.level > 0 || e.v < 0) cs.brand = clamp(cs.brand + e.v, 0, 100); }
-        return null;
-      case 'quality': s.quality = clamp(s.quality + e.v, 0, 100); return null;
+      case 'brand': this.brand(e.c ? sub(e.c) : null, e.v < 0 ? e.v * NEG : e.v); return null;
+      case 'quality': this.quality(e.v < 0 ? e.v * NEG : e.v); return null;
       case 'mod': {
         const from = s.year + (e.from || 0);
-        s.mods.push({ attract: e.attract ? subMap(e.attract) : null, gm: e.gm || 0, from, to: from + (e.years || 1) - 1 });
+        const harsh = (m) => { const o = {}; for (const k of Object.keys(m)) o[k] = m[k] < 1 ? Math.max(0.2, 1 - (1 - m[k]) * NEG) : m[k]; return o; };
+        s.mods.push({ attract: e.attract ? harsh(subMap(e.attract)) : null, gm: (e.gm || 0) < 0 ? e.gm * NEG : (e.gm || 0), gmC: e.gmC ? subMap(e.gmC) : null, from, to: from + (e.years || 1) - 1 });
         return null;
       }
-      case 'share': { const m = subMap(e.m); for (const c of D.COUNTRIES) s.countries[c.id].share *= pick(m, c.id); return null; }
+      case 'share': { const m = subMap(e.m); for (const c of D.COUNTRIES) { const v = pick(m, c.id); s.countries[c.id].share *= v < 1 ? Math.max(0.2, 1 - (1 - v) * NEG) : v; } return null; }
       case 'level': {
         const cid = sub(e.c); const cs = s.countries[cid];
         const v = !this.ind.physical && e.sw !== undefined ? e.sw : e.v;
@@ -440,6 +468,157 @@ class BizLife {
       }
       default: return null;
     }
+  }
+
+  // ---------------- 通用小工具（案例、策略卡共用） ----------------
+  pay(amt) { if (amt <= 0) return; this.spend(amt); this.s.flows.capex += amt; }
+  gain(amt) { if (amt <= 0) return; this.s.cash += amt; this.s.flows.refunds += amt; }
+  addMod(e) { const s = this.s; const from = s.year + (e.from || 0); s.mods.push({ attract: e.attract || null, gm: e.gm || 0, gmC: e.gmC || null, from, to: from + (e.years || 1) - 1 }); }
+  gmC(cid, year) { let g = 0; for (const md of this.s.mods) if (year >= md.from && year <= md.to && md.gmC && md.gmC[cid]) g += md.gmC[cid]; return g; }
+  brand(cid, v) {
+    const s = this.s;
+    if (v < 0 && s.flags.pr && s.year - s.flags.pr < 8) v *= 0.5;
+    const list = cid ? [cid] : D.COUNTRIES.map((c) => c.id).filter((c) => s.countries[c].level > 0 || v < 0);
+    for (const c of list) s.countries[c].brand = clamp(s.countries[c].brand + v, 0, 100);
+  }
+  quality(v) { this.s.quality = clamp(this.s.quality + v, 0, 100); }
+
+  // ---------------- 对手 ----------------
+  aliveRivals() { return this.s.rivals.filter((r) => r.alive); }
+  rivalTotal(r) { return Object.values(r.power).reduce((a, b) => a + b, 0); }
+  strongestRival() { return this.aliveRivals().sort((a, b) => this.rivalTotal(b) - this.rivalTotal(a))[0]; }
+  weakestRival() { return this.aliveRivals().sort((a, b) => this.rivalTotal(a) - this.rivalTotal(b))[0]; }
+  rivalPower(r, cid, year) {
+    const i = this.s.rivals.indexOf(r);
+    let p = r.power[cid] || 0;
+    for (const m of this.s.rmods || []) if (m.r === i && (m.c === null || m.c === cid) && year <= m.to) p *= m.mult;
+    return p;
+  }
+  compK(cid, year) {
+    const rs = this.aliveRivals();
+    let sum = 0; let tech = 50;
+    for (const r of rs) { sum += this.rivalPower(r, cid, year); tech = Math.max(tech, r.tech); }
+    const tf = clamp(1 + (tech - this.s.quality) / 90, 0.75, 1.5);
+    return this.ind.comp * (0.4 + 0.2 * sum) * tf;
+  }
+  rivalRev(r) { let v = 0; for (const c of D.COUNTRIES) v += this.market(c.id, this.s.year) * 0.08 * Math.min(1.5, (r.power[c.id] || 0) / 2); return v; }
+  rivalPrice(r) { return 1.1 * this.rivalRev(r); }
+  hitRival(r, mult, years) { const s = this.s; s.rmods.push({ r: s.rivals.indexOf(r), c: null, mult, to: s.year + years - 1 }); }
+  // 打击某国的对手；foreignOnly 只打外国对手；single 只打当地最强的一个（永久削弱）
+  hitRivals(cid, mult, years, foreignOnly, single) {
+    const s = this.s; const y = s.year;
+    let rs = this.aliveRivals().filter((r) => !foreignOnly || r.home !== cid);
+    if (single) { const r = rs.sort((a, b) => this.rivalPower(b, cid, y) - this.rivalPower(a, cid, y))[0]; if (r) r.power[cid] *= mult; return r; }
+    for (const r of rs) s.rmods.push({ r: s.rivals.indexOf(r), c: cid, mult, to: y + years - 1 });
+    return rs[0];
+  }
+  absorbRival(r) {
+    const s = this.s;
+    r.alive = false; r.died = s.year; r.fate = '被你收购';
+    for (const c of D.COUNTRIES) { const cs = s.countries[c.id]; if (cs.level > 0) cs.share = Math.min(0.9, cs.share + 0.035 * (r.power[c.id] || 0)); }
+    s.news.push(`你收购了${r.name}。`);
+  }
+  rivalsStep() {
+    const s = this.s; const y = s.year; const rnd = () => this.rand('rival');
+    const cids = D.COUNTRIES.map((c) => c.id);
+    const top = cids.slice().sort((a, b) => s.countries[b].rev - s.countries[a].rev)[0];
+    for (const r of this.aliveRivals()) {
+      for (const c of cids) r.power[c] = r2(r.power[c] + r.rate * (r.cap - r.power[c]) * (0.3 + rnd()));
+      r.tech = r2(50 + (r.tech - 50) * 0.92 + (rnd() - 0.5) * 4);
+      if (rnd() >= r.aggr) continue;
+      const k = rnd();
+      const c = rnd() < 0.6 && s.countries[top].level > 0 ? top : cids[Math.floor(rnd() * cids.length) % cids.length];
+      const cn = country(c).name;
+      if (k < 0.3) {
+        s.rmods.push({ r: s.rivals.indexOf(r), c, mult: 1.35, to: y + 1 });
+        if (s.countries[c].level > 0) { this.addMod({ gmC: { [c]: -0.02 }, years: 2 }); s.news.push(`${r.name}在${cn}发动价格战，你在当地的利润被压缩。`); } else s.news.push(`${r.name}在${cn}大幅降价抢市场。`);
+      } else if (k < 0.55) { r.power[c] = r2(Math.min(3.5, r.power[c] + 0.5)); s.news.push(`${r.name}在${cn}大举扩张，新开工厂和门店。`); }
+      else if (k < 0.75) { r.tech = r2(r.tech + 12); s.news.push(`${r.name}推出新一代产品，技术明显领先。${s.quality < r.tech ? '你的产品显得落后了。' : ''}`); }
+      else if (k < 0.9) { s.rmods.push({ r: s.rivals.indexOf(r), c, mult: 1.25, to: y + 1 }); s.news.push(`${r.name}在${cn}砸重金打广告。`); }
+      else if (!(s.flags.esop && y - s.flags.esop < 5) && s.policy.pay !== 'high') { this.quality(-3); s.news.push(`${r.name}高薪挖走了你的一批工程师（产品力 −3）。`); }
+    }
+    // 危机年份：最弱的对手可能倒下
+    const alive = this.aliveRivals();
+    if (this.sentiment(y) < 0.8 && alive.length && rnd() < 0.4) {
+      const w = this.weakestRival();
+      w.alive = false; w.died = y; w.fate = '破产';
+      s.distressed = { name: w.name, power: Object.assign({}, w.power), price: 0.3 * this.rivalPrice(w), year: y };
+      s.news.push(`${w.name}撑不住，宣布破产！它的资产在打折出售（看看手里有没有“收购破产对手资产”卡）。`);
+    }
+    if (s.distressed && y - s.distressed.year > 1) s.distressed = null;
+    // 新玩家杀入
+    const names = RIVAL_NAMES[this.ind.id];
+    const used = new Set(s.rivals.map((r) => r.name));
+    if (this.aliveRivals().length < 3 && rnd() < 0.18) {
+      const nm = names.find((n) => !used.has(n));
+      if (nm) {
+        const power = {}; for (const c of cids) power[c] = 0.3;
+        const rh = cids[Math.floor(rnd() * cids.length) % cids.length]; power[rh] = 0.8;
+        s.rivals.push({ name: nm, home: rh, power, tech: 60 + Math.round(rnd() * 8), aggr: 0.6, rate: 0.12, cap: 2.8, alive: true, since: y });
+        s.news.push(`新玩家${nm}杀入市场，技术新、打法凶。`);
+      }
+    }
+    // 对手合并
+    const al = this.aliveRivals();
+    if (al.length >= 3 && rnd() < 0.03) {
+      const srt = al.sort((a, b) => this.rivalTotal(a) - this.rivalTotal(b));
+      const [a, b] = srt;
+      for (const c of cids) b.power[c] = r2(Math.min(3.5, (a.power[c] + b.power[c]) * 0.8));
+      a.alive = false; a.died = y; a.fate = `并入${b.name}`;
+      s.news.push(`${b.name}合并了${a.name}，成了更难缠的对手。`);
+    }
+  }
+  rivalsView() {
+    const y = this.s.year;
+    return this.s.rivals.map((r) => ({ name: r.name, home: country(r.home).name, alive: r.alive, fate: r.fate, tech: Math.round(r.tech), strength: this.rivalTotal(r) / D.COUNTRIES.length, power: Object.fromEntries(D.COUNTRIES.map((c) => [c.id, this.rivalPower(r, c.id, y)])) }));
+  }
+
+  // ---------------- 策略卡 ----------------
+  card(id) { return CARDS.find((c) => c.id === id); }
+  drawHand() {
+    const s = this.s; const y = s.year;
+    const pool = CARDS.filter((c) => !c.special && (!c.years || (y >= c.years[0] && y <= c.years[1])) && (c.target === 'country' || !c.cond(this)));
+    const hand = [];
+    if (s.distressed) hand.push('buy_distressed');
+    const n = 5 + (s.trait === 'gambler' ? 1 : 0);
+    const left = pool.slice();
+    while (hand.length < n && left.length) { const i = Math.floor(this.rand('deck') * left.length) % left.length; hand.push(left[i].id); left.splice(i, 1); }
+    s.hand = hand;
+  }
+  redraw() {
+    const s = this.s;
+    if (s.yearOps.redraw) return { ok: false, reason: '今年已经换过一次牌' };
+    if (s.ap <= 0) return { ok: false, reason: '换牌要花一个行动点' };
+    s.ap -= 1; s.yearOps.redraw = true; this.drawHand();
+    return { ok: true };
+  }
+  cardCheck(id, cid) {
+    const s = this.s; const c = this.card(id);
+    if (!c || s.hand.indexOf(id) < 0) return { ok: false, reason: '手里没有这张牌' };
+    if (s.ended) return { ok: false, reason: '本局已结束' };
+    if (s.caseId) return { ok: false, reason: '先处理案例' };
+    if (s.ap <= 0) return { ok: false, reason: '今年的行动点用完了' };
+    if (c.target === 'country' && !cid) return { ok: false, reason: '把这张牌拖到一个国家上' };
+    const why = c.cond(this, cid);
+    if (why) return { ok: false, reason: why };
+    const cost = c.cost(this, cid) || 0;
+    if (cost > s.cash + this.creditRoom()) return { ok: false, reason: `要 ${Math.round(cost / 1e4)} 万美元，钱不够` };
+    return { ok: true, cost };
+  }
+  playCard(id, cid) {
+    const s = this.s; const chk = this.cardCheck(id, cid);
+    if (!chk.ok) return chk;
+    const c = this.card(id);
+    this.pay(chk.cost);
+    const res = c.play(this, cid) || {};
+    s.hand.splice(s.hand.indexOf(id), 1);
+    s.ap -= 1;
+    s.played.push({ id, c: cid || null });
+    s.actions.push({ token: 'card', card: id, name: c.name, c: cid || null, cost: chk.cost });
+    return { ok: true, cost: chk.cost, title: res.title || c.name, text: res.text || '' };
+  }
+  cardsView() {
+    return this.s.hand.map((id) => { const c = this.card(id); return { id, name: c.name, icon: c.icon, color: c.color, target: c.target, desc: c.desc, tags: c.tags }; });
   }
 
   // ---------------- 玩家行动 ----------------
@@ -642,7 +821,7 @@ class BizLife {
     let revenue = 0; let cogs = 0; let sell = 0; let fixed = 0; let foreignRev = 0;
     const gmBase = this.gmAdj(y) + (po.focus === 'cost' ? 0.02 : 0) + ({ low: 0.01, high: -0.012 }[po.pay] || 0) + (po.culture === 'mission' ? -0.005 : 0);
     const costMult = ({ single: 0.96, near: 1.04 }[po.supplier] || 1) * (po.inventory === 'jit' ? 0.98 : 1.01) * (po.local === 'global' ? 0.97 : 1) * (s.trait === 'operator' ? 0.96 : 1);
-    const shockK = ({ single: 2, multi: 0.5, near: 1 }[po.supplier] || 1) * (po.inventory === 'buffer' ? 0.5 : 1);
+    const shockK = ({ single: 2, multi: 0.5, near: 1 }[po.supplier] || 1) * (po.inventory === 'buffer' ? 0.5 : 1) * (s.flags.dual && y - s.flags.dual < 10 ? 0.5 : 1);
     const fxK = po.hedge === 'on' ? 0.3 : 1;
     const sellAdj = po.channel === 'omni' ? 0.02 : (po.channel === 'agent' && y >= 2030 ? -0.02 : 0);
     const fixedMult = { lean: 0.85, expand: 1.15 }[po.staff] || 1;
@@ -651,7 +830,7 @@ class BizLife {
       const cs = s.countries[c.id];
       const M = this.market(c.id, y);
       const A = this.attract(c.id, y);
-      const K = ind.comp;
+      const K = this.compK(c.id, y);
       const target = A / (A + K);
       if (cs.level === 0) cs.share *= 0.3; else cs.share += (target - cs.share) * 0.45;
       const src = this.sourcing(c.id, y);
@@ -662,7 +841,7 @@ class BizLife {
       const fxEff = 1 + (Math.sqrt(s.fx[c.id]) - 1) * (c.id === s.hq ? 1 : fxK);
       const rev = units * PRICE[s.price].mult * fxEff;
       const line = cs.level > 0 ? this.bestLine(c.id, y).line : 'mid';
-      const unitCost = Math.max(0.05, 1 - ind.gm - gmBase - P.LINE_GM[line]);
+      const unitCost = Math.max(0.05, 1 - ind.gm - gmBase - P.LINE_GM[line] - this.gmC(c.id, y));
       const cg = units * unitCost * src.cost * costMult;
       const sl = rev * Math.max(0.01, SELL_COST[cs.level] * (ind.id === 'software' ? 2.2 : 1) + (cs.level > 0 ? sellAdj : 0));
       const fx = FIXED[cs.level] * Math.max(0.4, this.costIdx(c.id, y)) * infl(y) * fixedMult * (c.id !== s.hq && po.local === 'deep' ? 1.15 : 1);
@@ -728,7 +907,7 @@ class BizLife {
       cs.brand = clamp(cs.brand * 0.95 + gain, 0, 100);
     }
     const dqAdj = ({ quality: 1.5, cost: -1 }[po.focus] || 0) + ({ lean: -1, expand: 1 }[po.staff] || 0) + ({ low: -1, high: 1 }[po.pay] || 0)
-      + (po.structure === 'matrix' ? 0.5 : 0) + (po.culture === 'engineer' ? 1 : 0) + (s.trait === 'engineer' ? 0.8 : 0) + (this.fd.dqBonus || 0);
+      + (po.structure === 'matrix' ? 0.5 : 0) + (po.culture === 'engineer' ? 1 : 0) + (s.trait === 'engineer' ? 0.8 : 0) + (this.fd.dqBonus || 0) + (s.flags.esop && y - s.flags.esop < 5 ? 0.5 : 0);
     const dq = RND[s.rnd].dq - DRIFT[s.industry] + 1 + dqAdj;
     s.quality = clamp(s.quality + (dq > 0 ? dq * (1 - s.quality / 110) : dq), 0, 100);
     let breakthrough = false;
@@ -740,14 +919,20 @@ class BizLife {
     // 估值
     const ni2 = (net + s.lastNI) / 2;
     const sent = this.sentiment(y) * (po.ceo === 'star' ? 1.1 : 1) * (s.ipo ? 1.15 : 1);
-    s.valuation = bankrupt ? 0 : Math.max(0, Math.max(0, ni2) * ind.pe * sent + revenue * PS[s.industry] * sent + s.cash - s.debt);
+    // 市场情绪随机游走 + 增长溢价：收入下滑时估值会被狠狠打折
+    const ga = this.rand('market'); const gb = this.rand('market');
+    const gauss = Math.sqrt(-2 * Math.log(Math.max(1e-9, ga))) * Math.cos(2 * Math.PI * gb);
+    s.mood = clamp(0.55 * (s.mood || 0) + 0.2 * gauss, -0.9, 0.9);
+    const growth = s.lastRev > 0 ? revenue / s.lastRev - 1 : 0;
+    const gMult = clamp(1 + 2.2 * growth, 0.45, 2.0);
+    s.valuation = bankrupt ? 0 : Math.max(0, Math.max(0, Math.max(0, ni2) * ind.pe + revenue * PS[s.industry]) * sent * gMult * Math.exp(s.mood) + s.cash - s.debt);
     s.lastNI = net; s.lastRev = revenue; s.lastEBITDA = ebitda;
 
     const f = s.flows;
     const report = {
       year: y, headline: ev.headline, future: !!ev.future, revenue, cogs, sell, fixed, rnd, hq, campaign, interest: interest - interestIncome, tax, net, ebitda,
       capex: f.capex, caseCash: f.caseCash, refunds: f.refunds, financing: f.financing, dividend, bondRepaid, cashStart: f.cashStart, cashEnd: s.cash, debt: s.debt,
-      valuation: s.valuation, sentiment: sent, rows, restructured, bankrupt, breakthrough, actions: s.actions.slice()
+      valuation: s.valuation, sentiment: sent, mood: s.mood, growth, rows, restructured, bankrupt, breakthrough, actions: s.actions.slice(), news: s.news.slice()
     };
     // 恒等式：期末现金 = 期初 − 资本开支 + 案例现金 + 撤出回收 + 净融资 + 净利润 − 分红 − 还债券 + 重组注入
     report.check = f.cashStart - f.capex + f.caseCash + f.refunds + f.financing + net - dividend - bondRepaid + (restructured ? restructured.cashIn : 0) - s.cash;

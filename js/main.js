@@ -7,7 +7,7 @@ const F = require('./game/format.js');
 const sharecard = require('./ui/sharecard.js');
 const { home } = require('./screens/home.js');
 const { board } = require('./screens/board.js');
-const { countryPage, strategyPage } = require('./screens/country.js');
+const { countryPage, strategyPage, cardPage, cardResultPage } = require('./screens/country.js');
 const { casePage, revealPage } = require('./screens/casepage.js');
 const { reportPage, endingPage } = require('./screens/report.js');
 const { cityPage, budgetPage, eventPage, endPage, OVERLAYS } = require('./screens/city.js');
@@ -46,6 +46,8 @@ const app = {
     if (s.ended) return endingPage(this);
     if (this.view === 'country' && this.countryId) return countryPage(this);
     if (this.view === 'strategy') return strategyPage(this);
+    if (this.view === 'card') return cardPage(this);
+    if (this.view === 'cardres') return cardResultPage(this);
     return board(this);
   },
   render(opts) { this.r.setPage(this.page(), opts); },
@@ -188,6 +190,16 @@ const app = {
     this.save();
     if (stay) this.refresh(); else this.refresh();
   },
+  openCard(id) { this.cardId = id; this.view = 'card'; this.render(); },
+  playCard(id, cid) {
+    const life = this.life; const c = life.card(id);
+    const res = life.playCard(id, cid);
+    if (!res.ok) { this.toast(res.reason); return; }
+    platform.vibrate();
+    this.cardResult = { name: c.name, color: c.color, cname: cid ? life.countryView(cid).name : '', title: res.title, text: res.text, cost: res.cost };
+    this.view = 'cardres'; this.save(); this.render();
+  },
+  redraw() { const r = this.life.redraw(); this.toast(r.ok ? '换了一手新牌' : r.reason); this.save(); this.refresh(); },
   setPolicy(key, val) {
     const res = this.life.setPolicy(key, val);
     if (!res.ok) this.toast(res.reason); else if (res.cost) this.toast(`调整完成，花费 ${F.usd(res.cost)}`);

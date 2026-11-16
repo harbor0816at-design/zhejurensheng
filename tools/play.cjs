@@ -50,9 +50,9 @@ const fs = require('fs');
 
   await shot('01-home', 2);
   const tapIf = async (id) => { if ((await page.evaluate(() => window.__ids())).includes(id)) await tap(id); };
-  await tap('ind-' + ind); await tapIf('hq-' + hq); await tap('seed-input'); await page.waitForTimeout(100);
+  await tapIf('ind-' + ind); await tapIf('hq-' + hq); await tap('seed-input'); await page.waitForTimeout(100);
   await tap('start');
-  let steps = 0; let drags = 0; let cases = 0; let caseIdx = 0;
+  let cardsPlayed = 0; let steps = 0; let drags = 0; let cases = 0; let caseIdx = 0;
   const plan = { 1995: [['export', 'UK'], ['export', 'DE']], 1996: [['branch', 'UK']], 1997: [['campaign', hq]], 1998: [['export', 'CN'], ['export', 'JP']], 2000: [['factory', 'VN']], 2002: [['branch', 'CN']], 2004: [['export', 'IN'], ['branch', 'DE']], 2006: [['export', 'BR'], ['export', 'MX']], 2009: [['branch', 'JP']], 2012: [['branch', 'IN']], 2016: [['factory', 'MX']] };
   while (steps++ < 1500) {
     const st = await state();
@@ -77,6 +77,18 @@ const fs = require('fs');
       if (st.year === 2006 && !shots.acq) { shots.acq = 1; await tap('tile-UK'); await tapIf('act-acquire'); await shot('03b-country-acq', 2); await tap('back'); }
       if (st.year === 2030 && !shots.future) { shots.future = 1; await shot('05b-board-2030'); }
       if (st.year === 2001) await shot('05-board-2001');
+      // 打牌：先拖一张国家卡，再点一张公司卡
+      const hand = await page.evaluate(() => window.__app.life.cardsView().map((c) => ({ id: c.id, t: c.target })));
+      const cc = hand.find((h) => h.t === 'country');
+      if (cc && (await page.evaluate(() => window.__app.life.s.ap)) > 0) {
+        const tgt = await page.evaluate((id) => { const L = window.__app.life; return ['US', 'UK', 'DE', 'CN', 'JP', 'IN', 'BR', 'MX', 'VN'].find((c) => L.cardCheck(id, c).ok) || null; }, cc.id);
+        if (tgt) { await drag('card-' + cc.id, 'tile-' + tgt); cardsPlayed++; if (!shots.cardres) { shots.cardres = 1; await shot('05c-card-result', 1); } await tapIf('card-ok'); }
+      }
+      const co = hand.find((h) => h.t === 'company');
+      if (co && (await page.evaluate((id) => window.__app.life.cardCheck(id, null).ok, co.id))) {
+        await tap('card-' + co.id); if (!shots.card) { shots.card = 1; await shot('05d-card', 1); }
+        await tap('play-card'); cardsPlayed++; await tapIf('card-ok');
+      }
       await tap('end-year');
       if ((await state()).k === 'board') await tap('end-year'); // 有剩余行动点时需要确认第二次
       continue;
@@ -98,6 +110,6 @@ const fs = require('fs');
   const img = await page.evaluate(() => (window.__wxHooks.shared[0] || {}).imageUrl || '');
   if (img.startsWith('data:image/png')) fs.writeFileSync(`${out}/10-sharecard.png`, Buffer.from(img.split(',')[1], 'base64'));
   const summary = await page.evaluate(() => { const s = window.__app.life.s; return { name: s.name, valuation: Math.round(s.valuation), endings: s.endings.map((e) => e.name), cases: s.caseLog.length, restructures: s.restructures, shared: window.__wxHooks.shared.map((x) => ({ t: x.title, q: x.query })) }; });
-  console.log(JSON.stringify({ steps, drags, cases, summary, errors }, null, 2));
+  console.log(JSON.stringify({ steps, drags, cardsPlayed, cases, summary, errors }, null, 2));
   await browser.close();
 })().catch((e) => { console.error('FAIL', e.message); process.exit(1); });
