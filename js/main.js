@@ -25,7 +25,7 @@ const app = {
   city: null, cityUI: freshCityUI(), cityView: 'map', citySpeed: 1, cityTimer: null, savedCity: null, citySeed: '', citySetup: { map: 'river', money: 'normal', challenges: [] },
   view: 'board',           // board | country | strategy | report | reveal
   countryId: null,
-  setup: { industry: 'electronics', hq: 'US', name: S.D.INDUSTRIES[0].names[0], seed: '', startYear: 1995, founder: 'startup' },
+  setup: { industry: 'electronics', hq: 'US', name: S.D.INDUSTRIES[0].names[0], seed: '', startYear: 1995, founder: 'startup', trait: 'none' },
   saved: null,
   invite: null,
   gamesDone: 0,
@@ -63,10 +63,11 @@ const app = {
   pickHq(id) { this.setup.hq = id; this.refresh(); },
   pickStart(y) { this.setup.startYear = y; this.refresh(); },
   pickFounder(id) { this.setup.founder = id; this.refresh(); },
+  pickTrait(id) { this.setup.trait = id; this.refresh(); },
   randomSetup() {
     const r = (a) => a[Math.floor(Math.random() * a.length)];
     const ind = r(S.D.INDUSTRIES);
-    this.setup = { industry: ind.id, hq: r(S.D.COUNTRIES).id, name: r(ind.names), seed: '', startYear: r(S.D.START_YEARS).year, founder: r(S.D.FOUNDERS).id };
+    this.setup = { industry: ind.id, hq: r(S.D.COUNTRIES).id, name: r(ind.names), seed: '', startYear: r(S.D.START_YEARS).year, founder: r(S.D.FOUNDERS).id, trait: r(S.D.TRAITS).id };
     this.refresh(); this.toast('已随机组合，满意就开始吧');
   },
   editName() {
@@ -187,6 +188,31 @@ const app = {
     this.save();
     if (stay) this.refresh(); else this.refresh();
   },
+  setPolicy(key, val) {
+    const res = this.life.setPolicy(key, val);
+    if (!res.ok) this.toast(res.reason); else if (res.cost) this.toast(`调整完成，花费 ${F.usd(res.cost)}`);
+    this.save(); this.refresh();
+  },
+  capital(op) {
+    const res = this.life[op]();
+    const name = { issueBond: '发行债券', raiseEquity: '增发新股', buyback: '回购股份', goPublic: '上市' }[op];
+    if (!res.ok) this.toast(res.reason); else { platform.vibrate(); this.toast(`${name}完成：${op === 'buyback' ? '花了' : '融到'} ${F.usd(res.amount)}`); }
+    this.save(); this.refresh();
+  },
+  acquire(cid) {
+    const res = this.life.acquire(cid);
+    if (!res.ok) this.toast(res.reason); else { platform.vibrate(); this.toast(`${res.msg}（花了 ${F.usd(res.cost)}）`); }
+    this.save(); this.refresh();
+  },
+  caseMeta(kind) {
+    const life = this.life;
+    const res = kind === 'consult' ? life.consultCase() : kind === 'partner' ? life.partnerCase() : life.deferCase();
+    if (!res.ok) { this.toast(res.reason || '做不了'); return; }
+    if (kind === 'consult') this.toast(`咨询报告到了（花了 ${F.usd(res.cost)}），每个选项的可能结果已标出`);
+    if (kind === 'partner') this.toast(res.on ? '已找到合作伙伴：这次选择的代价和收获都会打折' : '取消合作，自己干');
+    if (kind === 'defer') { this.toast('推迟到明年再定'); this.view = 'board'; }
+    this.save(); this.render();
+  },
   finance(kind, amt) {
     const res = kind === 'borrow' ? this.life.borrow(amt) : this.life.repay(amt);
     if (!res.ok) this.toast(res.reason); else this.toast(`${kind === 'borrow' ? '借入' : '还款'} ${F.usd(res.amount)}`);
@@ -219,7 +245,7 @@ const app = {
   share() { platform.shareNow(); },
   restart(same) {
     const s = this.life.s;
-    this.setup = { industry: s.industry, hq: s.hq, name: s.name, seed: same ? s.seed : '', startYear: s.startYear || 1995, founder: s.founder || 'startup' };
+    this.setup = { industry: s.industry, hq: s.hq, name: s.name, seed: same ? s.seed : '', startYear: s.startYear || 1995, founder: s.founder || 'startup', trait: s.trait || 'none' };
     this.gamesDone += 1;
     if (config.ads.interstitialEvery && this.gamesDone % config.ads.interstitialEvery === 0) platform.showInterstitial();
     this.start();
@@ -231,12 +257,12 @@ const app = {
       const title = (s.endings.find((e) => e.role === 'primary') || {}).name || '';
       return {
         title: config.share.title.replace('{company}', s.name).replace('{title}', title).replace('{value}', F.usd(s.valuation)),
-        query: `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}&y=${s.startYear || 1995}&f=${s.founder || 'startup'}`,
+        query: `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}&y=${s.startYear || 1995}&f=${s.founder || 'startup'}&t=${s.trait || 'none'}`,
         imageUrl: sharecard.make(life) || undefined
       };
     }
     const s = life ? life.s : null;
-    return { title: config.share.titleNoEnding, query: s ? `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}&y=${s.startYear || 1995}&f=${s.founder || 'startup'}` : '' };
+    return { title: config.share.titleNoEnding, query: s ? `seed=${encodeURIComponent(s.seed)}&ind=${s.industry}&hq=${s.hq}&y=${s.startYear || 1995}&f=${s.founder || 'startup'}&t=${s.trait || 'none'}` : '' };
   },
   handleQuery(q) {
     if (!q || !q.seed) return;
@@ -246,6 +272,7 @@ const app = {
     this.setup.seed = seed; this.setup.hq = hq;
     const y = Number(q.y); if (S.D.START_YEARS.some((x) => x.year === y)) this.setup.startYear = y;
     if (S.D.FOUNDERS.some((x) => x.id === q.f)) this.setup.founder = q.f;
+    if (S.D.TRAITS.some((x) => x.id === q.t)) this.setup.trait = q.t;
     if (ind) { this.setup.industry = ind.id; this.setup.name = ind.names[0]; }
     this.invite = { seed };
     if (this.screen === 'home') this.render();

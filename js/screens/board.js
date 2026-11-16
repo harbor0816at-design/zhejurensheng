@@ -76,7 +76,9 @@ function board(app) {
         const lines = f.m.wrap(hl, T.font(13, 500), f.w - 66);
         const h = 16 + Math.min(2, lines.length) * 19;
         f.push({ t: 'rect', x: f.x, y, w: f.w, h, r: 12, fill: 'rgba(250,204,21,0.12)', stroke: 'rgba(250,204,21,0.35)' });
-        f.push({ t: 'rect', x: f.x + 8, y: y + 8, w: 38, h: 19, r: 5, fill: '#dc2626' });
+        const fut = s.year > 2024;
+        f.push({ t: 'rect', x: f.x + 8, y: y + 8, w: 38, h: 19, r: 5, fill: fut ? '#7c3aed' : '#dc2626' });
+        if (fut) f.push({ t: 'text', x: f.x + 27, y: y + 40, s: '推演', font: T.font(10, 700), color: '#c4b5fd', align: 'center' });
         f.push({ t: 'text', x: f.x + 27, y: y + 22, s: String(s.year), font: T.font(11, 700), color: '#fff', align: 'center' });
         lines.slice(0, 2).forEach((ln, i) => f.push({ t: 'text', x: f.x + 54, y: y + 23 + i * 19, s: ln, font: T.font(13, 500), color: '#fef3c7' }));
         f.y += h + 10;
@@ -108,7 +110,7 @@ function board(app) {
       });
       f.y += h + 10;
       const bw = (f.w - 8) * 0.36;
-      f.button('总部战略', () => app.go('strategy'), { kind: 'dark', w: bw, h: 46, size: 14, inline: true, id: 'strategy' });
+      f.button('经营决策', () => app.go('strategy'), { kind: 'dark', w: bw, h: 46, size: 14, inline: true, id: 'strategy' });
       f.button(`结束 ${life.s.year} 年 →`, () => app.endYear(), { x: f.x + bw + 8, w: f.w - bw - 8, h: 46, size: 15, inline: true, id: 'end-year' });
       f.y += 46;
     }

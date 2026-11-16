@@ -1,7 +1,7 @@
 // 全球商业版蒙特卡洛：多种自动策略打 N 局，看估值、重组率、结局分布、现金恒等式。
 // 用法：node tools/biz-mc.cjs [局数]
 const path = require('path');
-const { BizLife, D } = require(path.resolve(__dirname, '../js/biz/engine.js'));
+const { BizLife, D, P } = require(path.resolve(__dirname, '../js/biz/engine.js'));
 const N = +process.argv[2] || 600;
 
 const POLICIES = {
@@ -23,9 +23,15 @@ const POLICIES = {
     for (const c of ids) { if (s.ap <= 0) break; for (const t of ['factory', 'branch', 'export', 'campaign']) if (L.check(t, c).ok) { L.place(t, c); break; } }
     if (s.ap > 0) L.borrow(5e6);
   },
-  // 随机玩家
+  // 随机玩家：连经营设置和资本运作也随机
   random(L, rnd) {
     const s = L.s;
+    if (rnd() < 0.3) {
+      for (const g of Object.keys(P.POLICIES)) for (const d of P.POLICIES[g]) { if (rnd() < 0.3) { const o = d.opts[Math.floor(rnd() * d.opts.length)].id; L.setPolicy(d.key, o); } }
+    }
+    const ops = ['issueBond', 'raiseEquity', 'buyback', 'goPublic'];
+    if (rnd() < 0.25) L[ops[Math.floor(rnd() * 4)]]();
+    if (rnd() < 0.15) { const c = D.COUNTRIES[Math.floor(rnd() * 9)].id; if (L.acquireCheck(c).ok) L.acquire(c); }
     L.setRnd(['low', 'mid', 'high'][Math.floor(rnd() * 3)]); L.setPrice(['low', 'mid', 'premium'][Math.floor(rnd() * 3)]);
     for (let k = 0; k < 6 && s.ap > 0; k++) {
       const t = ['export', 'branch', 'factory', 'campaign', 'exit'][Math.floor(rnd() * (k < 5 ? 4 : 5))];
@@ -42,23 +48,25 @@ function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5
 const res = {};
 let worst = 0;
 for (const pol of Object.keys(POLICIES)) {
-  const vals = []; let restr = 0; const ends = {}; let cases = 0;
+  const vals = []; let restr = 0; let bk = 0; const ends = {}; let cases = 0; const dialV = {};
   const byInd = {}; const byFd = {}; const byY = {}; let evs = 0;
   for (let i = 0; i < N; i++) {
     const rnd = mulberry(i * 7919 + pol.length);
     const ind = D.INDUSTRIES[i % D.INDUSTRIES.length].id;
     const hq = D.COUNTRIES[Math.floor(i / 5) % 9].id;
-    const founder = D.FOUNDERS[Math.floor(i / 45) % D.FOUNDERS.length].id;
-    const startYear = D.START_YEARS[Math.floor(i / 7) % 3].year;
-    const L = BizLife.create(`MC-${pol}-${i}`, { industry: ind, hq, founder, startYear });
+    const founder = D.FOUNDERS[Math.floor(i / 63) % D.FOUNDERS.length].id;
+    const trait = D.TRAITS[Math.floor(i / 11) % D.TRAITS.length].id;
+    const startYear = D.START_YEARS[Math.floor(i / 7) % 4].year;
+    const L = BizLife.create(`MC-${pol}-${i}`, { industry: ind, hq, founder, trait, startYear });
     let guard = 0;
-    while (!L.s.ended && guard++ < 60) {
+    while (!L.s.ended && guard++ < 90) {
       if (L.s.caseId) { const v = L.caseView(); L.chooseCase(v.options[Math.floor(rnd() * v.options.length)].id); }
       POLICIES[pol](L, rnd);
       L.endYear();
       worst = Math.max(worst, Math.abs(L.s.report.check));
     }
-    vals.push(L.s.valuation); if (L.s.restructures) restr++;
+    vals.push(L.s.valuation); if (L.s.restructures) restr++; if (L.s.bankrupt) bk++;
+    const dk = L.s.world.dials.tech + '/' + L.s.world.dials.geo; (dialV[dk] = dialV[dk] || []).push(L.s.valuation);
     cases += L.s.caseLog.length; evs += L.s.caseLog.filter((c) => c.event).length;
     (byFd[founder] = byFd[founder] || []).push(L.s.valuation); (byY[startYear] = byY[startYear] || []).push(L.s.valuation);
     const p = L.s.endings[0].name; ends[p] = (ends[p] || 0) + 1;
@@ -66,8 +74,9 @@ for (const pol of Object.keys(POLICIES)) {
   }
   const q = (a, p) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(p * b.length))]; };
   const fmt = (v) => (v >= 1e9 ? (v / 1e9).toFixed(1) + 'B' : (v / 1e6).toFixed(0) + 'M');
-  console.log(`\n== ${pol}  估值 P10/P50/P90/max = ${fmt(q(vals, 0.1))} / ${fmt(q(vals, 0.5))} / ${fmt(q(vals, 0.9))} / ${fmt(Math.max(...vals))}  重组 ${(restr / N * 100).toFixed(1)}%  每局案例 ${(cases / N).toFixed(1)}`);
+  console.log(`\n== ${pol}  估值 P10/P50/P90/max = ${fmt(q(vals, 0.1))} / ${fmt(q(vals, 0.5))} / ${fmt(q(vals, 0.9))} / ${fmt(Math.max(...vals))}  重组 ${(restr / N * 100).toFixed(1)}%  破产 ${(bk / N * 100).toFixed(1)}%  每局案例 ${(cases / N).toFixed(1)}`);
   console.log(`   每局随机事件 ${(evs / N).toFixed(1)}`);
+  console.log('   分未来 P50：' + Object.entries(dialV).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
   console.log('   分出身 P50：' + Object.entries(byFd).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
   console.log('   分年代 P50：' + Object.entries(byY).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));
   console.log('   分行业 P50：' + Object.entries(byInd).map(([k, v]) => `${k} ${fmt(q(v, 0.5))}`).join('  '));

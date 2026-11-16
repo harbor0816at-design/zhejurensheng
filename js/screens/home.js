@@ -71,7 +71,8 @@ function home(app) {
       f.gap(6);
       f.seg([{ label: '全球商业', on: app.mode === 'biz', onTap: () => app.pickMode('biz'), id: 'mode-biz' }, { label: '当市长', on: app.mode === 'city', onTap: () => app.pickMode('city'), id: 'mode-city' }], { h: 42, size: 15, after: 14 });
       if (app.mode === 'city') { citySection(f, app); return; }
-      f.text('5 个行业 × 9 个总部 × 3 个年代 × 5 种出身', { size: 14, color: '#cbd5e1', align: 'center' });
+      f.text('7 个行业 × 9 个总部 × 4 个年代 × 10 种出身 × 7 种特长', { size: 13, color: '#cbd5e1', align: 'center' });
+      f.text('打到 2074 年 · 未来五十年 27 种走向', { size: 13, color: '#a5b4fc', align: 'center', lh: 1.6 });
       f.gap(12);
       // 小棋盘插画
       f.custom(118, (push, x, y, w) => {
@@ -91,19 +92,15 @@ function home(app) {
       });
       f.gap(8);
       f.card({}, (c) => {
-        c.text('经营一家全球公司，一路做到 2024 年', { size: 15, weight: 700, color: T.c.ink, lh: 1.5 });
-        c.text('把出口、分公司、工厂拖到 9 个真实国家的棋盘上；经历亚洲金融危机、中国入世、金融海啸、脱欧、疫情；在诺基亚、丰田召回、Zara 快时尚、柴油门这些经典案例的十字路口做选择，还会碰上挖角、罢工、专利官司等随机事件。', { size: 13, color: T.c.body, lh: 1.65 });
+        c.text('经营一家全球公司，一路做到 2074 年', { size: 15, weight: 700, color: T.c.ink, lh: 1.5 });
+        c.text('在 9 个真实国家的棋盘上布局；先走真实的历史（亚洲金融危机、入世、金融海啸、疫情），再闯按种子推演的未来五十年（AI、阵营分裂、气候冲击……）。90 多个案例（多数有 4 种解法）和 20 种突发事件，还能请咨询、找伙伴、推迟决定；产品、资本、组织、供应链都能细调。现金断了可以重组，次数用完就会破产。', { size: 13, color: T.c.body, lh: 1.65 });
       });
       f.card({}, (c) => {
         c.text('1. 选行业', { size: 14, weight: 700, color: T.c.ink, lh: 1.6 });
         c.gap(4);
-        D.INDUSTRIES.forEach((ind) => {
-          const on = st.industry === ind.id;
-          c.card({ bg: on ? T.c.accentSoft : T.c.soft, stroke: on ? T.c.accent : null, lw: 2, pad: 12, after: 8, onTap: () => app.pickIndustry(ind.id), id: 'ind-' + ind.id }, (k) => {
-            k.text(ind.name + (on ? '  ✓' : ''), { size: 15, weight: 700, color: on ? T.c.accentDark : T.c.ink, lh: 1.4 });
-            k.text(ind.blurb, { size: 12, color: T.c.muted, lh: 1.5 });
-          });
-        });
+        const inds = D.INDUSTRIES;
+        for (let i = 0; i < inds.length; i += 4) c.seg(inds.slice(i, i + 4).map((ind) => ({ label: ind.name, on: st.industry === ind.id, onTap: () => app.pickIndustry(ind.id), id: 'ind-' + ind.id })), { size: 13, after: 6 });
+        c.text((inds.find((x) => x.id === st.industry) || inds[0]).blurb, { size: 12, color: T.c.muted, lh: 1.5 });
         c.gap(4);
         c.text('2. 选总部', { size: 14, weight: 700, color: T.c.ink, lh: 1.6 });
         for (let i = 0; i < HQS.length; i += 3) c.seg(HQS.slice(i, i + 3).map((id) => ({ label: D.COUNTRIES.find((k) => k.id === id).name, on: st.hq === id, onTap: () => app.pickHq(id), id: 'hq-' + id })), { after: 6 });
@@ -118,7 +115,12 @@ function home(app) {
         for (let i = 0; i < fds.length; i += 3) c.seg(fds.slice(i, i + 3).map((fd) => ({ label: fd.name, on: st.founder === fd.id, onTap: () => app.pickFounder(fd.id), id: 'founder-' + fd.id })), { size: 13, after: 6 });
         c.text((fds.find((x) => x.id === st.founder) || fds[0]).desc, { size: 12, color: T.c.muted, lh: 1.5 });
         c.gap(6);
-        c.text('5. 公司名和种子码', { size: 14, weight: 700, color: T.c.ink, lh: 1.6 });
+        c.text('5. 创始人特长', { size: 14, weight: 700, color: T.c.ink, lh: 1.6 });
+        const trs = D.TRAITS;
+        for (let i = 0; i < trs.length; i += 4) c.seg(trs.slice(i, i + 4).map((t) => ({ label: t.name, on: (st.trait || 'none') === t.id, onTap: () => app.pickTrait(t.id), id: 'trait-' + t.id })), { size: 12, after: 6 });
+        c.text((trs.find((x) => x.id === (st.trait || 'none')) || trs[0]).desc, { size: 12, color: T.c.muted, lh: 1.5 });
+        c.gap(6);
+        c.text('6. 公司名和种子码', { size: 14, weight: 700, color: T.c.ink, lh: 1.6 });
         const field = (label, value, ph, onTap, id) => {
           const y = c.y; const h = 44;
           c.push({ t: 'rect', x: c.x, y, w: c.w, h, r: 10, fill: T.c.soft, stroke: T.c.line });

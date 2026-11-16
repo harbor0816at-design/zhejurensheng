@@ -1,13 +1,20 @@
 // 全球商业版引擎：确定性、可复现、与界面无关。
 // 一回合 = 一年：beginYear（新闻、案例）→ 玩家行动（place / 战略 / 融资）→ endYear（结算、年报）。
 const D = require('./data.js');
+const F = require('./future.js');
+const P = require('./policy.js');
 const { CASES: CASES1 } = require('./cases.js');
 const { CASES2 } = require('./cases2.js');
+const { CASES3 } = require('./cases3.js');
+const { CASES_F } = require('./cases_future.js');
+const { CASES_F2 } = require('./cases_future2.js');
+const { EXTRA } = require('./options_extra.js');
 const { BIZ_EVENTS } = require('./events.js');
-const CASES = CASES1.concat(CASES2);
+const CASES = CASES1.concat(CASES2, CASES3, CASES_F, CASES_F2);
+for (const c of CASES) if (EXTRA[c.id] && !c.options.some((o) => o.id === 'x')) c.options.push(EXTRA[c.id]);
 const findCard = (id) => CASES.find((c) => c.id === id) || BIZ_EVENTS.find((c) => c.id === id);
 
-const VERSION = '2.1.0';
+const VERSION = '3.0.0';
 const LEVELS = ['未进入', '出口', '分公司', '工厂'];
 const LEVELS_SW = ['未进入', '线上销售', '分公司', '数据中心'];
 const PW = [0, 0.35, 1.0, 1.25];                // 布局等级对吸引力的权重
@@ -16,8 +23,8 @@ const FIXED = [0, 0.15e6, 1.5e6, 5.0e6];         // 每国固定费用（按当�
 const CAPEX = [0, 0.4e6, 2.5e6, 12e6];          // 升级到该等级的一次性投入
 const RND = { low: { pct: 0.02, min: 0.3e6, dq: -1 }, mid: { pct: 0.05, min: 1.0e6, dq: 2 }, high: { pct: 0.1, min: 2.5e6, dq: 5 } };
 const PRICE = { low: { attract: 1.25, mult: 0.88, brand: -0.5 }, mid: { attract: 1, mult: 1, brand: 0 }, premium: { attract: 0.8, mult: 1.15, brand: 1 } };
-const DRIFT = { electronics: 2.5, beverage: 0.6, software: 2.0, auto: 1.6, apparel: 1.2 };
-const PS = { electronics: 0.3, beverage: 0.6, software: 1.0, auto: 0.3, apparel: 0.7 };
+const DRIFT = { electronics: 2.5, beverage: 0.6, software: 2.0, auto: 1.6, apparel: 1.2, pharma: 1.4, energy: 2.2 };
+const PS = { electronics: 0.3, beverage: 0.6, software: 1.0, auto: 0.3, apparel: 0.7, pharma: 0.9, energy: 0.5 };
 const TAX = 0.22;
 
 // ---------------- 随机 ----------------
@@ -45,7 +52,6 @@ const industry = (id) => D.INDUSTRIES.find((i) => i.id === id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const r2 = (v) => Math.round(v * 100) / 100;
 
-function eventOf(year) { return D.EVENTS.find((e) => e.year === year) || { year, headline: '' }; }
 function pick(map, key) { if (!map) return 1; return (map[key] !== undefined ? map[key] : 1) * (key !== '*' && map['*'] !== undefined ? map['*'] : 1); }
 
 class BizLife {
@@ -55,19 +61,23 @@ class BizLife {
     const hq = opts.hq || 'US';
     const startYear = D.START_YEARS.some((x) => x.year === opts.startYear) ? opts.startYear : D.START_YEAR;
     const fd = D.FOUNDERS.find((x) => x.id === opts.founder) || D.FOUNDERS[0];
+    const tr = D.TRAITS.find((x) => x.id === opts.trait) || D.TRAITS[0];
     const scale = 1 + 0.06 * (startYear - D.START_YEAR); // 晚开局的起步资金按经济规模放大
     const s = {
-      v: VERSION, seed: String(seed), industry: ind.id, hq, startYear, founder: fd.id,
+      v: VERSION, seed: String(seed), industry: ind.id, hq, startYear, founder: fd.id, trait: tr.id,
       name: opts.name || ind.names[0],
       year: startYear, cash: 5e6 * fd.cash * scale, debt: (fd.debt || 0) * scale, quality: fd.quality, rnd: fd.rnd || 'mid', price: 'mid',
-      ownership: fd.ownership || 1, lossCarry: 0, restructures: 0, ended: false,
+      ownership: fd.ownership || 1, lossCarry: 0, restructures: 0, ended: false, bankrupt: null,
+      policy: Object.assign({}, P.DEFAULT_POLICY, { lines: P.DEFAULT_POLICY.lines.slice() }), policyAt: {},
+      wealth: 0, bonds: [], ipo: 0, yearOps: {}, deferred: null, eventSeen: {}, caseConsult: false, casePartner: false,
       countries: {}, mods: [], flags: {}, fx: {},
       ap: 0, apMax: 3, actions: [], flows: null,
       caseId: null, caseCtx: null, caseResult: null, caseLog: [], lastCaseYear: 0,
       history: [], report: null, endings: [], valuation: 5e6, lastNI: 0, lastRev: 0, lastEBITDA: 0,
       rng: {}
     };
-    for (const k of ['macro', 'market', 'case', 'event']) s.rng[k] = fnv1a32(`${s.seed}|${VERSION}|${k}`);
+    for (const k of ['macro', 'market', 'case', 'event', 'future']) s.rng[k] = fnv1a32(`${s.seed}|${VERSION}|${k}`);
+    s.world = F.generate(() => rngNext(s.rng, 'future'), ind.id);
     // 每国每年的小幅需求噪声（宏观流，开局一次性生成）
     s.noise = {};
     for (const c of D.COUNTRIES) {
@@ -78,10 +88,14 @@ class BizLife {
     }
     const home = s.countries[hq];
     home.level = fd.homeLevel || 2; home.brand = fd.brand; home.share = 0;
-    if (home.level >= 3 && !ind.physical) home.level = 3;
+    if (fd.foreign) { // 海归 / 外企分拆：开局就有海外据点
+      const pool = ['US', 'UK', 'DE', 'JP', 'CN'].filter((c) => c !== hq);
+      for (let i = 0; i < fd.foreign; i++) { const cs = s.countries[pool[i]]; cs.level = fd.foreignLevel || 1; cs.brand = fd.foreignBrand || 10; }
+    }
     const life = new BizLife(s);
     const A0 = life.attract(hq, s.year);
     home.share = 0.6 * A0 / (A0 + ind.comp);
+    for (const c of D.COUNTRIES) if (c.id !== hq && s.countries[c.id].level > 0) { const A = life.attract(c.id, s.year); s.countries[c.id].share = 0.4 * A / (A + ind.comp); }
     life.beginYear();
     return life;
   }
@@ -92,34 +106,89 @@ class BizLife {
   get ind() { return industry(this.s.industry); }
   levelName(lv) { return (this.ind.physical ? LEVELS : LEVELS_SW)[lv]; }
   rand(k) { return rngNext(this.s.rng, k); }
+  get fd() { return D.FOUNDERS.find((x) => x.id === this.s.founder) || D.FOUNDERS[0]; }
+  pol(k) { const s = this.s; if (k === 'rnd') return s.rnd; if (k === 'price') return s.price; return s.policy[k]; }
+  isFuture(year) { return (year || this.s.year) > D.HIST_END; }
+  ev(year) {
+    if (year > D.HIST_END) return (this.s.world.events[year]) || { year, headline: '', future: true };
+    return D.EVENTS.find((e) => e.year === year) || { year, headline: '' };
+  }
+  fi(year) { return Math.max(0, Math.min(F.FUTURE_END - F.FUTURE_START, year - F.FUTURE_START)); }
+  gdp(cid, year) {
+    const c = country(cid);
+    if (year <= D.HIST_END) return D.interp(c.gdp, year);
+    return D.interp(c.gdp, D.HIST_END) * this.s.world.gdp[cid][this.fi(year)];
+  }
+  pen(year) {
+    if (year <= D.HIST_END) return D.interp(this.ind.pen, year);
+    return D.interp(this.ind.pen, D.HIST_END) * this.s.world.pen[this.fi(year)];
+  }
+  income(cid, year) { return D.interp(D.INCOME[cid], year); }
 
   // ---------------- 世界查询 ----------------
   market(cid, year) {
     const ind = this.ind;
     const c = country(cid);
-    const ev = eventOf(year);
-    const gdp = D.interp(c.gdp, year) * 1e12;
+    const ev = this.ev(year);
+    const gdp = this.gdp(cid, year) * 1e12;
     const noise = this.s.noise[cid][year - D.START_YEAR] || 1;
-    return gdp * ind.gdpShare * D.interp(ind.pen, year) * pick(ev.demand, cid) * pick(ev.sector, ind.id) * noise;
+    return gdp * ind.gdpShare * this.pen(year) * pick(ev.demand, cid) * pick(ev.sector, ind.id) * noise;
   }
-  costIdx(cid, year) { return D.interp(country(cid).cost, year); }
-  access(cid, year) { if (cid === this.s.hq) return 1; const a = D.ACCESS[this.s.industry][cid]; return a === undefined ? 1 : D.interp(a, year); } // 本国公司不受外资准入限制
+  costIdx(cid, year) {
+    const c = country(cid);
+    if (year <= D.HIST_END) return D.interp(c.cost, year);
+    const c0 = D.interp(c.cost, D.HIST_END);
+    let v = c0 + (F.COST_T[cid] - c0) * (1 - Math.exp(-(year - D.HIST_END) / 25));
+    const ay = this.s.world.autoYear || 2060; // 机器人普及后，各国人工成本差距缩小
+    if (year > ay) v = 0.82 + (v - 0.82) * (1 - 0.4 * Math.min(1, (year - ay) / 20));
+    return v;
+  }
+  access(cid, year) { // 本国公司不受外资准入限制
+    const s = this.s;
+    if (cid === s.hq) return 1;
+    const a = D.ACCESS[s.industry][cid];
+    let v = a === undefined ? 1 : D.interp(a, year);
+    if (year > D.HIST_END) for (const r of s.world.access) {
+      if (r.c !== cid || year < r.from) continue;
+      if (r.notHq && s.hq === r.notHq) continue;
+      if (r.onlyHq && s.hq !== r.onlyHq) continue;
+      v *= r.mult;
+    }
+    if (s.trait === 'diplomat') v += 0.1;
+    return clamp(v, 0.1, 1.3);
+  }
   tariff(from, to, year) {
     if (from === to) return 0;
-    let t = D.interp(D.TARIFF[to], year);
-    for (const [f, tt, a, b, v] of D.SPECIAL_TARIFF) if (f === from && tt === to && year >= a && year <= b) t += v;
-    return Math.max(0, t);
+    let t = D.interp(D.TARIFF[to], year); let sp = 0;
+    for (const [f, tt, a, b, v] of D.SPECIAL_TARIFF) if (f === from && tt === to && year >= a && year <= b) sp += v;
+    if (year > D.HIST_END) for (const [f, tt, a, b, v] of this.s.world.tariffs) if (f === from && tt === to && year >= a && year <= b) sp += v;
+    if (this.s.trait === 'diplomat' && sp > 0) sp *= 0.6;
+    return Math.max(0, t + sp);
   }
   growth(cid, year) {
     const a = this.market(cid, year - 1 < D.START_YEAR ? year : year - 1);
     return this.market(cid, year) / a - 1;
   }
-  sentiment(year) { const ev = eventOf(year); return pick(ev.sentiment, this.s.industry); }
-  headline(year) { return eventOf(year || this.s.year).headline; }
-  baseRate(year) { return D.interp(D.BASE_RATE, year); }
-  loanRate() { return this.baseRate(this.s.year) + 0.035; }
-  creditMult() { const fd = D.FOUNDERS.find((x) => x.id === this.s.founder); return (fd && fd.credit) || 1; }
+  sentiment(year) { const ev = this.ev(year); return pick(ev.sentiment, this.s.industry); }
+  headline(year) { return this.ev(year || this.s.year).headline; }
+  baseRate(year) { return year > D.HIST_END ? this.s.world.rate[this.fi(year)] : D.interp(D.BASE_RATE, year); }
+  loanRate() {
+    const s = this.s;
+    return Math.max(0.005, this.baseRate(s.year) + 0.035 + (s.trait === 'financier' ? -0.01 : 0) + (s.trait === 'gambler' ? 0.01 : 0) + (s.policy.culture === 'steady' ? -0.005 : 0));
+  }
+  bondTotal() { return this.s.bonds.reduce((a, b) => a + b.amt, 0); }
+  loans() { return Math.max(0, this.s.debt - this.bondTotal()); }
+  creditMult() { return (this.fd.credit || 1) * (this.s.trait === 'financier' ? 1.3 : 1); }
   creditLimit() { return this.creditMult() * Math.max(4e6, 2.5 * Math.max(0, this.s.lastEBITDA)); }
+  creditRoom() { return Math.max(0, this.creditLimit() - this.loans()); }
+  maxRestructure() { return this.fd.maxRestructure !== undefined ? this.fd.maxRestructure : 2; }
+  // 某国顾客会买哪一档产品
+  bestLine(cid, year) {
+    const t = this.income(cid, year);
+    let best = null; let fit = 0;
+    for (const l of this.s.policy.lines) { const f = P.interpTier(t, l); if (f > fit) { fit = f; best = l; } }
+    return { line: best || 'mid', fit: (fit || 1) + 0.05 * (this.s.policy.lines.length - 1) };
+  }
 
   modMult(cid, year) {
     let m = 1;
@@ -135,25 +204,37 @@ class BizLife {
   // 实物行业：给某国供货的最低单位成本系数（相对行业基准）及来源
   sourcing(cid, year) {
     const ind = this.ind;
-    const ev = eventOf(year);
+    const ev = this.ev(year);
+    const tm = this.s.policy.supplier === 'near' ? 0.5 : 1;
     if (!ind.physical) return { cost: this.s.countries[cid].level >= 3 ? 0.92 : 1, from: null };
     const ref = ind.id === 'electronics' || ind.id === 'apparel' ? 0.7 : 0.8;
     let best = null;
     for (const f of D.COUNTRIES) {
       if (this.s.countries[f.id].level < 3) continue;
-      const cost = this.costIdx(f.id, year) * pick(ev.cost, f.id) * (1 + this.tariff(f.id, cid, year)) + (f.id === cid ? 0 : ind.importCost);
+      const cost = this.costIdx(f.id, year) * pick(ev.cost, f.id) * (1 + tm * this.tariff(f.id, cid, year)) + (f.id === cid ? 0 : ind.importCost);
       if (!best || cost < best.cost) best = { cost, from: f.id };
     }
     // 没有自有工厂可用：代工
     let contract;
-    if (ind.id === 'electronics') contract = { cost: (0.55 + 0.25 * this.costIdx('CN', year)) * pick(ev.cost, 'CN') * (1 + this.tariff('CN', cid, year)) + ind.importCost, from: '代工' };
-    else if (ind.id === 'apparel') {
-      for (const x of ['CN', 'VN', 'IN']) {
-        const cc = (0.5 + 0.3 * this.costIdx(x, year)) * pick(ev.cost, x) * (1 + this.tariff(x, cid, year)) + ind.importCost;
+    if (ind.id === 'electronics') {
+      for (const x of year > D.HIST_END ? ['CN', 'VN', 'MX'] : ['CN']) {
+        const cc = (0.55 + 0.25 * this.costIdx(x, year)) * pick(ev.cost, x) * (1 + tm * this.tariff(x, cid, year)) + ind.importCost;
         if (!contract || cc < contract.cost) contract = { cost: cc, from: '代工' };
       }
-    } else if (ind.id === 'auto') contract = { cost: 1.18 * (0.5 + 0.5 * this.costIdx(cid, year)) * pick(ev.cost, cid), from: '代工' };
-    else contract = { cost: 1.08 * (0.5 + 0.5 * this.costIdx(cid, year)) * pick(ev.cost, cid), from: '代工' };
+    }
+    else if (ind.id === 'apparel') {
+      for (const x of ['CN', 'VN', 'IN']) {
+        const cc = (0.5 + 0.3 * this.costIdx(x, year)) * pick(ev.cost, x) * (1 + tm * this.tariff(x, cid, year)) + ind.importCost;
+        if (!contract || cc < contract.cost) contract = { cost: cc, from: '代工' };
+      }
+    } else {
+      // 其他行业：在本地或几个制造大国里找最便宜的代工厂
+      const prem = ind.id === 'auto' ? 1.06 : 1;
+      for (const x of ind.tradeable ? [cid, 'CN', 'MX', 'VN'] : [cid]) {
+        const cc = prem * (0.6 + 0.3 * this.costIdx(x, year)) * pick(ev.cost, x) * (1 + tm * this.tariff(x, cid, year)) + (x === cid ? 0 : ind.importCost);
+        if (!contract || cc < contract.cost) contract = { cost: cc, from: '代工' };
+      }
+    }
     if (!best || contract.cost < best.cost) best = contract;
     return { cost: best.cost / ref, from: best.from };
   }
@@ -166,6 +247,16 @@ class BizLife {
     if (this.s.industry === 'software') a *= 1 + 6 * cs.share;
     if (this.s.industry === 'beverage' && cs.level >= 3) a *= 1.1;
     if (cs.campaign) a *= 1.12;
+    // 经营设置
+    const po = s.policy;
+    a *= this.bestLine(cid, year).fit * P.channelEff(po.channel, year);
+    if (cid !== s.hq) {
+      a *= { central: 0.94, regional: 1.08, matrix: 1.04 }[po.structure] || 1;
+      a *= po.local === 'global' ? (s.industry === 'beverage' ? 0.85 : 0.9) : po.local === 'deep' ? 1.12 : 1;
+    }
+    if (po.staff === 'expand') a *= 1.04;
+    a *= { wolf: 1.05, engineer: 0.98, steady: 0.98 }[po.culture] || 1;
+    if (po.supplier === 'near' && s.industry === 'apparel') a *= 1.05;
     return a;
   }
 
@@ -176,16 +267,24 @@ class BizLife {
     s.flows = { capex: 0, caseCash: 0, financing: 0, refunds: 0, cashStart: s.cash, debtStart: s.debt };
     for (const c of D.COUNTRIES) s.countries[c.id].campaign = false;
     s.apMax = 3 + (s.lastRev >= 1e9 ? 1 : 0) + (s.lastRev >= 1e10 ? 1 : 0);
-    const fd = D.FOUNDERS.find((x) => x.id === s.founder);
-    if (fd && fd.apPenalty && s.year < (s.startYear || D.START_YEAR) + fd.apPenalty) s.apMax -= 1;
+    const fd = this.fd; const sy = s.startYear || D.START_YEAR;
+    if (fd.apPenalty && s.year < sy + fd.apPenalty) s.apMax -= 1;
+    if (fd.apBonus && s.year < sy + fd.apBonus) s.apMax += 1;
+    if (s.trait === 'gambler') s.apMax += 1;
+    if (s.policy.ceo === 'star' || (s.policy.ceo === 'pro' && s.lastRev >= 1e8)) s.apMax += 1;
     s.ap = s.apMax;
-    s.caseResult = null;
+    s.yearOps = {};
+    s.caseResult = null; s.caseConsult = false; s.casePartner = false;
     this.triggerCase();
   }
 
   triggerCase() {
     const s = this.s; const y = s.year;
     const done = new Set(s.caseLog.map((c) => c.id));
+    if (s.deferred) { // 去年推迟的案例优先
+      const d = findCard(s.deferred); s.deferred = null;
+      if (d && !done.has(d.id) && y <= d.years[1] + 1) { s.caseId = d.id; s.caseCtx = s.deferredCtx || {}; s.lastCaseYear = y; return; }
+    }
     const elig = CASES.filter((c) => !done.has(c.id) && y >= c.years[0] && y <= c.years[1] && (!c.industry || c.industry === s.industry) && (!c.cond || c.cond(s)));
     if (!elig.length) return;
     elig.sort((a, b) => a.years[1] - b.years[1]);
@@ -201,10 +300,12 @@ class BizLife {
   // 没有历史案例的年份，按种子随机抛出一张经营事件卡（每局每张最多一次）
   triggerEvent(done) {
     const s = this.s; const y = s.year;
-    if (y === (s.startYear || D.START_YEAR) || this.rand('event') >= 0.5) return;
-    const elig = BIZ_EVENTS.filter((c) => !done.has(c.id) && y >= c.years[0] && y <= c.years[1] && (!c.industry || c.industry === s.industry) && (!c.cond || c.cond(s)));
+    if (y === (s.startYear || D.START_YEAR) || this.rand('event') >= 0.35) return;
+    const seen = s.eventSeen || {};
+    const elig = BIZ_EVENTS.filter((c) => !(seen[c.id] && y - seen[c.id] < 15) && y >= c.years[0] && y <= c.years[1] && (!c.industry || c.industry === s.industry) && (!c.cond || c.cond(s)));
     if (!elig.length) return;
     const chosen = elig[Math.floor(this.rand('event') * elig.length) % elig.length];
+    seen[chosen.id] = y; s.eventSeen = seen;
     s.caseId = chosen.id;
     s.caseCtx = chosen.ctx ? chosen.ctx(s, () => this.rand('event')) : {};
   }
@@ -218,7 +319,35 @@ class BizLife {
       if (v === undefined) return k === 'company' ? s.name : m;
       const cc = country(v); return cc ? cc.name : v;
     });
-    return { id: c.id, title: c.title, era: c.era, event: c.id.startsWith('X_'), situation: fill(c.situation), options: c.options.map((o) => ({ id: o.id, text: fill(o.text), hint: fill(o.hint) })), theoryName: c.theory ? c.theory.name : '' };
+    const odds = (o) => (s.caseConsult ? o.outcomes.map((x) => ({ p: x.p, title: fill(x.title) })) : null);
+    return {
+      id: c.id, title: c.title, era: c.era, event: c.id.startsWith('X_'), future: !!c.future || s.year > D.HIST_END,
+      situation: fill(c.situation), options: c.options.map((o) => ({ id: o.id, text: fill(o.text), hint: fill(o.hint), odds: odds(o) })),
+      theoryName: c.theory ? c.theory.name : '',
+      consulted: s.caseConsult, partnered: s.casePartner, consultCost: this.consultCost(),
+      canDefer: !c.id.startsWith('X_') && c.years[1] >= s.year && s.year < D.END_YEAR
+    };
+  }
+  consultCost() { return Math.max(3e5, 0.01 * this.s.lastRev); }
+  // 解决方式：请咨询公司（看清每个选项的概率）
+  consultCase() {
+    const s = this.s;
+    if (!s.caseId || s.caseConsult) return { ok: false, reason: '已经咨询过了' };
+    const cost = this.consultCost();
+    if (cost > s.cash + this.creditRoom()) return { ok: false, reason: '钱不够请咨询公司' };
+    this.spend(cost); s.flows.caseCash -= cost; s.caseConsult = true;
+    return { ok: true, cost };
+  }
+  // 解决方式：找伙伴合作（成本和收益都减半）
+  partnerCase() { const s = this.s; if (!s.caseId) return { ok: false }; s.casePartner = !s.casePartner; return { ok: true, on: s.casePartner }; }
+  // 解决方式：推迟一年（犹豫会让市场略受影响）
+  deferCase() {
+    const s = this.s; const v = this.caseView();
+    if (!v || !v.canDefer) return { ok: false, reason: '这件事拖不了' };
+    s.deferred = s.caseId; s.deferredCtx = s.caseCtx; s.caseId = null; s.caseCtx = null;
+    s.mods.push({ attract: { '*': 0.98 }, gm: 0, from: s.year, to: s.year });
+    s.caseLog.push({ id: 'DEFER_' + v.id, year: s.year, title: v.title, era: v.era, option: '推迟一年再定', outcome: '暂时搁置', outcomeText: '犹豫让团队和客户有些观望。', history: '', theory: null, event: true, cashDelta: 0, deferred: true });
+    return { ok: true };
   }
 
   chooseCase(optId) {
@@ -231,19 +360,34 @@ class BizLife {
     for (const o of opt.outcomes) { if (r < o.p) { out = o; break; } r -= o.p; }
     const before = { cash: s.cash, valuation: s.valuation };
     let title = out.title; let text = out.text;
-    for (const e of out.effects) {
+    const scale = s.casePartner ? 0.55 : 1;
+    if (s.casePartner) text += '（与伙伴合作，代价和收获都打了折扣。）';
+    for (const e0 of out.effects) {
+      const e = scale === 1 ? e0 : this.scaleEffect(e0, scale);
       const res = this.applyEffect(e, s.caseCtx || {});
       if (res && res.title) { title = res.title; text = res.text; }
     }
     const view = this.caseView();
     const entry = {
-      id: c.id, year: s.year, title: c.title, era: c.era, option: view.options.find((o) => o.id === optId).text,
+      id: c.id, year: s.year, title: c.title, era: c.era, option: view.options.find((o) => o.id === optId).text + (s.casePartner ? '（与伙伴合作）' : ''), future: view.future,
       outcome: title, outcomeText: text, history: c.history || '', theory: c.theory || null, event: c.id.startsWith('X_'), cashDelta: s.cash - before.cash
     };
     s.caseLog.push(entry);
     s.caseResult = entry;
     s.caseId = null; s.caseCtx = null;
     return entry;
+  }
+
+  scaleEffect(e, k) {
+    const sm = (m) => { const o = {}; for (const kk of Object.keys(m)) o[kk] = 1 + (m[kk] - 1) * k; return o; };
+    switch (e.t) {
+      case 'cash': return Object.assign({}, e, { v: e.v * k, min: (e.min || 0) * k });
+      case 'brand': case 'quality': return Object.assign({}, e, { v: e.v * k });
+      case 'mod': return Object.assign({}, e, { attract: e.attract ? sm(e.attract) : null, gm: (e.gm || 0) * k });
+      case 'share': return Object.assign({}, e, { m: sm(e.m) });
+      case 'raise': case 'debt': return Object.assign({}, e, { v: e.v * k });
+      default: return e;
+    }
   }
 
   applyEffect(e, ctx) {
@@ -273,6 +417,7 @@ class BizLife {
         const cid = sub(e.c); const cs = s.countries[cid];
         const v = !this.ind.physical && e.sw !== undefined ? e.sw : e.v;
         cs.level = e.force ? v : Math.max(cs.level, v);
+        if (cid === s.hq && cs.level < 2) cs.level = 2; // 总部所在国至少保留分公司
         if (cs.level > 0 && cs.brand < 5) cs.brand = 5;
         return null;
       }
@@ -303,7 +448,8 @@ class BizLife {
     return base * Math.max(0.5, this.costIdx(cid, this.s.year)) * (1 + 0.02 * (this.s.year - D.START_YEAR));
   }
   campaignCost(cid) {
-    return Math.max(1e6, 0.1 * (this.s.countries[cid].rev || 0)) * Math.max(0.5, this.costIdx(cid, this.s.year));
+    const m = (this.fd.campaignMult || 1) * (this.s.trait === 'marketer' ? 0.6 : 1);
+    return m * Math.max(1e6, 0.1 * (this.s.countries[cid].rev || 0)) * Math.max(0.5, this.costIdx(cid, this.s.year)) * (1 + 0.01 * Math.max(0, this.s.year - 2024));
   }
   // token: export | branch | factory | campaign | exit
   check(token, cid) {
@@ -327,7 +473,7 @@ class BizLife {
       if (cid === s.hq && cs.level <= 1) return { ok: false, reason: '总部所在国不能完全撤出' };
       return { ok: true, cost: -0.3 * this.capexFor(cid, cs.level) };
     } else return { ok: false, reason: '未知行动' };
-    const avail = s.cash + Math.max(0, this.creditLimit() - s.debt);
+    const avail = s.cash + this.creditRoom();
     if (cost > avail) return { ok: false, reason: `需要 ${Math.round(cost / 1e4)} 万美元，现金和信用额度不够` };
     if (target) {
       const run = FIXED[target] * Math.max(0.4, this.costIdx(cid, s.year)) * (1 + 0.03 * (s.year - D.START_YEAR));
@@ -362,21 +508,126 @@ class BizLife {
     const s = this.s;
     s.cash -= amt;
     if (s.cash < 0) {
-      const draw = Math.min(-s.cash, Math.max(0, this.creditLimit() - s.debt));
+      const draw = Math.min(-s.cash, this.creditRoom());
       s.debt += draw; s.cash += draw; s.flows.financing += draw;
     }
   }
   setRnd(v) { if (RND[v]) this.s.rnd = v; }
   setPrice(v) { if (PRICE[v]) this.s.price = v; }
+  // 经营设置：返回 {ok, cost?, reason?}
+  policyInfo(key) {
+    for (const g of Object.keys(P.POLICIES)) { const d = P.POLICIES[g].find((x) => x.key === key); if (d) return d; }
+    return null;
+  }
+  policyLock(key) {
+    const d = this.policyInfo(key); const s = this.s;
+    if (!d || !d.cooldown || !s.policyAt[key]) return 0;
+    return Math.max(0, s.policyAt[key] + d.cooldown - s.year);
+  }
+  setPolicy(key, val) {
+    const s = this.s; const d = this.policyInfo(key);
+    if (!d || s.ended) return { ok: false, reason: '无效设置' };
+    if (key === 'rnd') { this.setRnd(val); return { ok: true }; }
+    if (key === 'price') { this.setPrice(val); return { ok: true }; }
+    if (!d.opts.some((o) => o.id === val)) return { ok: false, reason: '无效选项' };
+    if (d.multi) {
+      const cur = s.policy[key]; const i = cur.indexOf(val);
+      if (i >= 0) { if (cur.length <= 1) return { ok: false, reason: '至少保留一档产品' }; cur.splice(i, 1); } else cur.push(val);
+      return { ok: true };
+    }
+    if (s.policy[key] === val) return { ok: true };
+    if (key === 'channel' && val === 'agent' && s.year < 2030) return { ok: false, reason: 'AI 代理渠道 2030 年后才成熟' };
+    const lock = this.policyLock(key);
+    if (lock > 0) return { ok: false, reason: `刚调整过，还要等 ${lock} 年` };
+    let cost = 0;
+    if (key === 'structure') {
+      cost = Math.max(2e5, 0.01 * s.lastRev);
+      if (cost > s.cash + this.creditRoom()) return { ok: false, reason: '付不起重组费' };
+      this.spend(cost); s.flows.capex += cost;
+    }
+    s.policy[key] = val;
+    if (d.cooldown) s.policyAt[key] = s.year;
+    return { ok: true, cost };
+  }
+
+  // ---------------- 资本运作（每年每种最多一次） ----------------
+  capitalView() {
+    const s = this.s; const V = s.valuation;
+    const bondAmt = clamp(0.4 * s.lastRev, 5e6, 5e6 + 3 * Math.max(0, s.lastEBITDA));
+    return {
+      bond: { ok: s.lastRev >= 5e7 && !s.yearOps.bond, amount: bondAmt, rate: this.baseRate(s.year) + 0.02 + (s.trait === 'financier' ? -0.005 : 0), reason: s.lastRev < 5e7 ? '年收入 5000 万美元以上才能发债' : '今年已经发过债' },
+      equity: { ok: V >= 2e7 && !s.yearOps.equity, amount: 0.15 * V / 0.85 * 0.9, reason: V < 2e7 ? '估值 2000 万美元以上才有人投' : '今年已经融过资' },
+      buyback: { ok: !s.yearOps.buyback && s.ownership < 0.995 && s.cash >= 0.05 * V * 1.05 && V > 0, amount: 0.05 * V * 1.05, reason: s.ownership >= 0.995 ? '你已经持有全部股份' : '现金不够回购 5% 股份' },
+      ipo: { ok: !s.ipo && s.lastRev >= 1e8 && s.lastNI > 0, amount: 0.18 * V, reason: s.ipo ? `已于 ${s.ipo} 年上市` : '年收入过亿且盈利才能上市' },
+      listed: s.ipo
+    };
+  }
+  issueBond() {
+    const s = this.s; const v = this.capitalView().bond;
+    if (!v.ok) return { ok: false, reason: v.reason };
+    s.bonds.push({ amt: v.amount, year: s.year, rate: v.rate });
+    s.debt += v.amount; s.cash += v.amount; s.flows.financing += v.amount; s.yearOps.bond = true;
+    s.actions.push({ token: 'bond', cost: -v.amount });
+    return { ok: true, amount: v.amount };
+  }
+  raiseEquity() {
+    const s = this.s; const v = this.capitalView().equity;
+    if (!v.ok) return { ok: false, reason: v.reason };
+    s.ownership *= 0.85; s.cash += v.amount; s.flows.financing += v.amount; s.yearOps.equity = true;
+    s.actions.push({ token: 'equity', cost: -v.amount });
+    return { ok: true, amount: v.amount };
+  }
+  buyback() {
+    const s = this.s; const v = this.capitalView().buyback;
+    if (!v.ok) return { ok: false, reason: v.reason };
+    s.ownership = Math.min(1, s.ownership / 0.95); s.cash -= v.amount; s.flows.financing -= v.amount; s.yearOps.buyback = true;
+    s.actions.push({ token: 'buyback', cost: v.amount });
+    return { ok: true, amount: v.amount };
+  }
+  goPublic() {
+    const s = this.s; const v = this.capitalView().ipo;
+    if (!v.ok) return { ok: false, reason: v.reason };
+    s.ownership *= 0.85; s.cash += v.amount; s.flows.financing += v.amount; s.ipo = s.year;
+    s.actions.push({ token: 'ipo', cost: -v.amount });
+    return { ok: true, amount: v.amount };
+  }
+  acquireCost(cid) { return 0.035 * this.market(cid, this.s.year) * (1 + 0.5 * this.s.countries[cid].share); }
+  acquireCheck(cid) {
+    const s = this.s; const cs = s.countries[cid];
+    if (s.ended) return { ok: false, reason: '本局已结束' };
+    if (s.caseId) return { ok: false, reason: '先处理案例' };
+    if (s.ap <= 0) return { ok: false, reason: '今年的行动点用完了' };
+    if (cs.level === 0) return { ok: false, reason: '先进入这个国家，才能收购当地对手' };
+    if (s.yearOps['acq' + cid]) return { ok: false, reason: '今年已经在这里收购过' };
+    if (this.access(cid, s.year) < 0.6) return { ok: false, reason: '当地监管不批准外资收购' };
+    const cost = this.acquireCost(cid);
+    if (cost > s.cash + this.creditRoom()) return { ok: false, reason: `收购要 ${Math.round(cost / 1e4)} 万美元，钱不够` };
+    return { ok: true, cost };
+  }
+  acquire(cid) {
+    const s = this.s; const chk = this.acquireCheck(cid);
+    if (!chk.ok) return chk;
+    const cs = s.countries[cid];
+    this.spend(chk.cost); s.flows.capex += chk.cost;
+    cs.share = Math.min(0.9, cs.share + 0.05 * (1 - cs.share));
+    cs.brand = clamp(cs.brand + 4, 0, 100);
+    if (cs.level < 2) cs.level = 2;
+    s.ap -= 1; s.yearOps['acq' + cid] = true;
+    let msg = '收购顺利，份额和渠道都到手了。';
+    if (this.rand('market') < 0.3) { s.quality = clamp(s.quality - 3, 0, 100); msg = '收购完成，但整合不顺，产品力下滑了一些。'; }
+    s.actions.push({ token: 'acquire', c: cid, cost: chk.cost });
+    return { ok: true, cost: chk.cost, msg };
+  }
+
   borrow(amt) {
-    const s = this.s; const room = Math.max(0, this.creditLimit() - s.debt);
+    const s = this.s; const room = this.creditRoom();
     const a = Math.min(room, amt);
     if (a <= 0) return { ok: false, reason: '信用额度用完了' };
     s.debt += a; s.cash += a; s.flows.financing += a;
     return { ok: true, amount: a };
   }
   repay(amt) {
-    const s = this.s; const a = Math.min(amt, s.debt, Math.max(0, s.cash));
+    const s = this.s; const a = Math.min(amt, this.loans(), Math.max(0, s.cash));
     if (a <= 0) return { ok: false, reason: s.debt <= 0 ? '没有负债' : '现金不够' };
     s.debt -= a; s.cash -= a; s.flows.financing -= a;
     return { ok: true, amount: a };
@@ -386,9 +637,16 @@ class BizLife {
   endYear() {
     const s = this.s;
     if (s.ended || s.caseId) return false;
-    const y = s.year; const ind = this.ind; const ev = eventOf(y);
+    const y = s.year; const ind = this.ind; const ev = this.ev(y); const po = s.policy;
     const rows = {};
-    let revenue = 0; let cogs = 0; let sell = 0; let fixed = 0; let gmAdj = this.gmAdj(y);
+    let revenue = 0; let cogs = 0; let sell = 0; let fixed = 0; let foreignRev = 0;
+    const gmBase = this.gmAdj(y) + (po.focus === 'cost' ? 0.02 : 0) + ({ low: 0.01, high: -0.012 }[po.pay] || 0) + (po.culture === 'mission' ? -0.005 : 0);
+    const costMult = ({ single: 0.96, near: 1.04 }[po.supplier] || 1) * (po.inventory === 'jit' ? 0.98 : 1.01) * (po.local === 'global' ? 0.97 : 1) * (s.trait === 'operator' ? 0.96 : 1);
+    const shockK = ({ single: 2, multi: 0.5, near: 1 }[po.supplier] || 1) * (po.inventory === 'buffer' ? 0.5 : 1);
+    const fxK = po.hedge === 'on' ? 0.3 : 1;
+    const sellAdj = po.channel === 'omni' ? 0.02 : (po.channel === 'agent' && y >= 2030 ? -0.02 : 0);
+    const fixedMult = { lean: 0.85, expand: 1.15 }[po.staff] || 1;
+    const infl = (yy) => 1 + 0.03 * (yy - D.START_YEAR);
     for (const c of D.COUNTRIES) {
       const cs = s.countries[c.id];
       const M = this.market(c.id, y);
@@ -398,23 +656,31 @@ class BizLife {
       if (cs.level === 0) cs.share *= 0.3; else cs.share += (target - cs.share) * 0.45;
       const src = this.sourcing(c.id, y);
       let supply = 1;
-      if (ind.physical && ev.supply) supply = pick(ev.supply, src.from && src.from !== '代工' ? src.from : 'CN');
+      if (ind.physical && ev.supply) supply = clamp(1 - (1 - pick(ev.supply, src.from && src.from !== '代工' ? src.from : 'CN')) * shockK, 0.3, 1);
       s.fx[c.id] = 1 + (s.fx[c.id] * pick(ev.fx, c.id) - 1) * 0.85;
       const units = M * cs.share * supply;
-      const rev = units * PRICE[s.price].mult * Math.sqrt(s.fx[c.id]);
-      const unitCost = Math.max(0.05, 1 - ind.gm - gmAdj);
-      const cg = units * unitCost * src.cost;
-      const sl = rev * SELL_COST[cs.level] * (ind.id === 'software' ? 2.2 : 1);
-      const fx = FIXED[cs.level] * Math.max(0.4, this.costIdx(c.id, y)) * (1 + 0.03 * (y - D.START_YEAR));
+      const fxEff = 1 + (Math.sqrt(s.fx[c.id]) - 1) * (c.id === s.hq ? 1 : fxK);
+      const rev = units * PRICE[s.price].mult * fxEff;
+      const line = cs.level > 0 ? this.bestLine(c.id, y).line : 'mid';
+      const unitCost = Math.max(0.05, 1 - ind.gm - gmBase - P.LINE_GM[line]);
+      const cg = units * unitCost * src.cost * costMult;
+      const sl = rev * Math.max(0.01, SELL_COST[cs.level] * (ind.id === 'software' ? 2.2 : 1) + (cs.level > 0 ? sellAdj : 0));
+      const fx = FIXED[cs.level] * Math.max(0.4, this.costIdx(c.id, y)) * infl(y) * fixedMult * (c.id !== s.hq && po.local === 'deep' ? 1.15 : 1);
       revenue += rev; cogs += cg; sell += sl; fixed += fx;
-      rows[c.id] = { market: M, share: cs.share, rev, cogs: cg, sell: sl, fixed: fx, profit: rev - cg - sl - fx, source: src.from, level: cs.level };
+      if (c.id !== s.hq) foreignRev += rev;
+      rows[c.id] = { market: M, share: cs.share, rev, cogs: cg, sell: sl, fixed: fx, profit: rev - cg - sl - fx, source: src.from, level: cs.level, line: cs.level > 0 ? line : null };
       cs.rev = rev; cs.profit = rows[c.id].profit;
     }
     const small = clamp(revenue / 3e7, 0.25, 1); // 小公司的研发底线和总部费用按规模缩放
-    const rnd = Math.max(RND[s.rnd].min * small, RND[s.rnd].pct * revenue * (s.industry === 'software' ? 1.4 : 1));
-    const hq = 0.5e6 * small + 0.03 * revenue;
+    const rnd = Math.max(RND[s.rnd].min * small, RND[s.rnd].pct * revenue * (s.industry === 'software' || s.industry === 'pharma' ? 1.4 : 1)) + (po.focus === 'innovate' ? 0.01 * revenue : 0);
+    let hq = (0.5e6 * small + 0.03 * revenue) * (po.structure === 'central' ? 0.8 : 1);
+    hq += revenue * (({ regional: 0.01, matrix: 0.006 }[po.structure] || 0) + (po.ceo === 'pro' ? 0.005 : 0) + (po.ceo === 'star' ? 0.012 : 0) + 0.006 * (po.lines.length - 1));
+    if (po.ceo === 'star') hq += 2e6 * (1 + 0.02 * (y - D.START_YEAR));
+    if (po.hedge === 'on') hq += 0.004 * foreignRev;
+    if (s.ipo) hq += 1e6 * small;
     const campaign = s.flows.campaign || 0;
-    const interest = s.debt * this.loanRate();
+    const bondT = this.bondTotal();
+    const interest = this.loans() * this.loanRate() + s.bonds.reduce((a2, b2) => a2 + b2.amt * b2.rate, 0);
     const interestIncome = Math.max(0, s.cash) * this.baseRate(y) * 0.5;
     const ebitda = revenue - cogs - sell - fixed - rnd - hq - campaign;
     const ebt = ebitda - interest + interestIncome;
@@ -425,44 +691,71 @@ class BizLife {
     const net = ebt - tax;
     s.cash += net + campaign; // 营销费在投放时已付现，这里只把其余利润计入现金
 
-    // 现金不够：动用信用额度；还不够就重组（不结束游戏）
-    let restructured = null;
+    // 分红
+    let dividend = 0;
+    if (net > 0 && po.payout !== 'none' && s.cash > 0) {
+      dividend = Math.min(s.cash * 0.8, net * (po.payout === 'most' ? 0.7 : 0.3));
+      s.cash -= dividend; s.wealth += dividend * s.ownership;
+    }
+    // 到期债券
+    let bondRepaid = 0;
+    const due = s.bonds.filter((b2) => y - b2.year >= 7);
+    if (due.length) {
+      for (const b2 of due) bondRepaid += b2.amt;
+      s.bonds = s.bonds.filter((b2) => y - b2.year < 7);
+      s.cash -= bondRepaid; s.debt -= bondRepaid;
+    }
+
+    // 现金不够：动用信用额度；还不够就重组；重组次数用完就破产
+    let restructured = null; let bankrupt = null;
     if (s.cash < 0) {
-      const draw = Math.min(-s.cash, Math.max(0, this.creditMult() * Math.max(4e6, 2.5 * Math.max(0, ebitda)) - s.debt));
+      const draw = Math.min(-s.cash, Math.max(0, this.creditMult() * Math.max(4e6, 2.5 * Math.max(0, ebitda)) - this.loans()));
       s.debt += draw; s.cash += draw; s.flows.financing += draw;
     }
-    if (s.cash < 0) restructured = this.restructure(revenue);
+    if (s.cash < 0) {
+      if (s.restructures < this.maxRestructure() && revenue > 1e6) restructured = this.restructure(revenue);
+      else bankrupt = { year: y, cash: s.cash, debt: s.debt, revenue, why: revenue <= 1e6 ? '收入几乎归零，没有投资人愿意接手' : `已经重组过 ${s.restructures} 次，债权人和投资人不再给机会` };
+    }
 
     // 品牌与产品力
     const act = D.COUNTRIES.filter((c) => s.countries[c.id].level > 0);
-    const avgBrand = act.reduce((a, c) => a + s.countries[c.id].brand, 0) / Math.max(1, act.length);
+    const avgBrand = act.reduce((a2, c) => a2 + s.countries[c.id].brand, 0) / Math.max(1, act.length);
+    const bAdj = (s.trait === 'marketer' ? 1 : 0) + (po.staff === 'lean' ? -1 : 0) + ({ wolf: -0.5, mission: 1 }[po.culture] || 0);
     for (const c of D.COUNTRIES) {
       const cs = s.countries[c.id];
       if (cs.level === 0) { cs.brand *= 0.85; continue; }
-      const gain = [0, 1.5, 4, 4][cs.level] + (cs.campaign ? 12 : 0) + PRICE[s.price].brand + 0.06 * (avgBrand - cs.brand);
+      const gain = [0, 1.5, 4, 4][cs.level] + (cs.campaign ? 12 : 0) + PRICE[s.price].brand + 0.06 * (avgBrand - cs.brand) + bAdj;
       cs.brand = clamp(cs.brand * 0.95 + gain, 0, 100);
     }
-    const dq = RND[s.rnd].dq - DRIFT[s.industry] + 1;
+    const dqAdj = ({ quality: 1.5, cost: -1 }[po.focus] || 0) + ({ lean: -1, expand: 1 }[po.staff] || 0) + ({ low: -1, high: 1 }[po.pay] || 0)
+      + (po.structure === 'matrix' ? 0.5 : 0) + (po.culture === 'engineer' ? 1 : 0) + (s.trait === 'engineer' ? 0.8 : 0) + (this.fd.dqBonus || 0);
+    const dq = RND[s.rnd].dq - DRIFT[s.industry] + 1 + dqAdj;
     s.quality = clamp(s.quality + (dq > 0 ? dq * (1 - s.quality / 110) : dq), 0, 100);
+    let breakthrough = false;
+    if (po.focus === 'innovate' && !bankrupt && this.rand('market') < 0.12) {
+      breakthrough = true; s.quality = clamp(s.quality + 8, 0, 100);
+      for (const c of act) s.countries[c.id].brand = clamp(s.countries[c.id].brand + 5, 0, 100);
+    }
 
     // 估值
     const ni2 = (net + s.lastNI) / 2;
-    const sent = this.sentiment(y);
-    s.valuation = Math.max(0, Math.max(0, ni2) * ind.pe * sent + revenue * PS[s.industry] * sent + s.cash - s.debt);
+    const sent = this.sentiment(y) * (po.ceo === 'star' ? 1.1 : 1) * (s.ipo ? 1.15 : 1);
+    s.valuation = bankrupt ? 0 : Math.max(0, Math.max(0, ni2) * ind.pe * sent + revenue * PS[s.industry] * sent + s.cash - s.debt);
     s.lastNI = net; s.lastRev = revenue; s.lastEBITDA = ebitda;
 
     const f = s.flows;
     const report = {
-      year: y, headline: ev.headline, revenue, cogs, sell, fixed, rnd, hq, campaign, interest: interest - interestIncome, tax, net, ebitda,
-      capex: f.capex, caseCash: f.caseCash, refunds: f.refunds, financing: f.financing, cashStart: f.cashStart, cashEnd: s.cash, debt: s.debt,
-      valuation: s.valuation, sentiment: sent, rows, restructured, actions: s.actions.slice()
+      year: y, headline: ev.headline, future: !!ev.future, revenue, cogs, sell, fixed, rnd, hq, campaign, interest: interest - interestIncome, tax, net, ebitda,
+      capex: f.capex, caseCash: f.caseCash, refunds: f.refunds, financing: f.financing, dividend, bondRepaid, cashStart: f.cashStart, cashEnd: s.cash, debt: s.debt,
+      valuation: s.valuation, sentiment: sent, rows, restructured, bankrupt, breakthrough, actions: s.actions.slice()
     };
-    // 恒等式：期末现金 = 期初 − 资本开支 + 案例现金 + 撤出回收 + 净融资 + 净利润 + 重组注入
-    report.check = f.cashStart - f.capex + f.caseCash + f.refunds + f.financing + net + (restructured ? restructured.cashIn : 0) - s.cash;
+    // 恒等式：期末现金 = 期初 − 资本开支 + 案例现金 + 撤出回收 + 净融资 + 净利润 − 分红 − 还债券 + 重组注入
+    report.check = f.cashStart - f.capex + f.caseCash + f.refunds + f.financing + net - dividend - bondRepaid + (restructured ? restructured.cashIn : 0) - s.cash;
     s.report = report;
-    s.history.push({ year: y, revenue, net, cash: s.cash, debt: s.debt, valuation: s.valuation, restructured: !!restructured, countries: Object.fromEntries(D.COUNTRIES.map((c) => [c.id, { rev: rows[c.id].rev, level: rows[c.id].level, share: rows[c.id].share }])) });
+    s.history.push({ year: y, revenue, net, cash: s.cash, debt: s.debt, valuation: s.valuation, restructured: !!restructured, bankrupt: !!bankrupt, wealth: s.wealth, countries: Object.fromEntries(D.COUNTRIES.map((c) => [c.id, { rev: rows[c.id].rev, level: rows[c.id].level, share: rows[c.id].share }])) });
     s.mods = s.mods.filter((m) => m.to >= y + 1);
 
+    if (bankrupt) { s.bankrupt = bankrupt; s.ended = true; s.endings = this.endings(); s.ap = 0; return true; }
     if (y >= D.END_YEAR) { s.ended = true; s.endings = this.endings(); s.ap = 0; return true; }
     s.year = y + 1;
     this.beginYear();
@@ -482,53 +775,73 @@ class BizLife {
       cashIn += refund; sold.push(c.id);
       cs.level = Math.max(0, cs.level - 1); cs.share *= 0.5; cs.brand *= 0.7;
     }
-    // 投资人注资 + 债权人打折
+    // 投资人注资 + 债权人打折（债券一并打折）
     const need = Math.max(0, -(s.cash + cashIn)) + Math.max(3e6, 0.2 * revenue);
     const before = s.cash;
     s.cash = s.cash + cashIn + need;
     s.ownership *= 0.6;
     const haircut = s.debt * 0.5;
     s.debt -= haircut;
+    for (const b of s.bonds) b.amt *= 0.5;
     s.restructures += 1;
     for (const c of D.COUNTRIES) s.countries[c.id].brand = Math.max(0, s.countries[c.id].brand - 5);
-    return { sold, injected: need, haircut, cashIn: cashIn + need, cashBefore: before };
+    return { sold, injected: need, haircut, cashIn: cashIn + need, cashBefore: before, left: this.maxRestructure() - s.restructures };
   }
 
   // ---------------- 结局 ----------------
   endings() {
     const s = this.s;
     const last = s.history[s.history.length - 1];
+    if (s.bankrupt) {
+      const E = [{ id: 'BANKRUPT', name: '破产清算', text: `${s.bankrupt.year} 年，${s.bankrupt.why}。公司走到了尽头。` }];
+      if (s.wealth >= 1e8) E.push({ id: 'GOLDEN', name: '公司没了钱还在', text: '好在这些年分红落袋，你个人还算体面。' });
+      const peak = Math.max(...s.history.map((h) => h.valuation));
+      if (peak >= 1e9) E.push({ id: 'ICARUS', name: '伊卡洛斯', text: '飞得最高的时候估值超过十亿美元，最后还是坠落了。' });
+      return E.slice(0, 3).map((e, i) => ({ id: e.id, name: e.name, text: e.text, role: i === 0 ? 'primary' : 'secondary' }));
+    }
     const V = s.valuation;
+    // 金额门槛按名义经济规模放大：2074 年的十亿美元不如 2024 年值钱
+    const W = (yy) => D.COUNTRIES.reduce((acc, c) => acc + this.gdp(c.id, yy), 0);
+    const G = Math.max(1, W(s.year) / W(Math.min(s.year, D.HIST_END)));
     const rev = last ? last.revenue : 0;
-    const by = (ids) => ids.reduce((a, id) => a + (last ? last.countries[id].rev : 0), 0) / Math.max(1, rev);
+    const by = (ids) => ids.reduce((acc, id) => acc + (last ? last.countries[id].rev : 0), 0) / Math.max(1, rev);
     const regions = { americas: [], asia: [], europe: [] };
     for (const c of D.COUNTRIES) regions[c.region].push(c.id);
     const maxRegion = Math.max(...Object.values(regions).map(by));
     const wide = D.COUNTRIES.filter((c) => s.countries[c.id].level >= 2).length;
     const home = by([s.hq]);
     const emerging = by(['CN', 'IN', 'BR', 'MX', 'VN'].filter((x) => x !== s.hq));
-    const yrs = D.END_YEAR - (s.startYear || D.START_YEAR) + 1;
+    const sy = s.startYear || D.START_YEAR;
+    const yrs = s.year - sy + 1;
     const lowCostFactories = ['CN', 'VN', 'IN', 'MX'].filter((c) => c !== s.hq && s.countries[c].level >= 3).length;
     const peakV = Math.max(...s.history.map((h) => h.valuation));
     const cheated = s.caseLog.some((c) => c.id === 'A3_EMISSION' && c.outcome === '东窗事发');
+    const fut = s.caseLog.filter((c) => c.future).length;
     const E = [
-      { id: 'UNICORN', name: '超级独角兽', ok: s.founder === 'vc' && V >= 2.5e10, text: '投资人的钱没有白花，你把公司做成了百亿美元级别。' },
-      { id: 'DYNASTY', name: '百年老店', ok: s.founder === 'family' && s.ownership >= 0.99 && s.restructures === 0 && V >= 5e9, text: '股份一直握在家族手里，公司已经可以传给下一代了。' },
-      { id: 'SOE_REBORN', name: '老树新花', ok: s.founder === 'soe' && V >= 1.5e10, text: '从笨重的国企车间起步，变成了一家有活力的现代企业。' },
-      { id: 'TECH', name: '技术信仰', ok: s.quality >= 93 && V >= 2e9, text: '你始终相信产品力，市场最终给了回报。' },
-      { id: 'LATECOMER', name: '后发先至', ok: (s.startYear || D.START_YEAR) >= 2015 && V >= 1e10, text: '起步晚了二十年，十年就追上了老前辈。' },
-      { id: 'GIANT', name: '全球巨头', ok: V >= 5e10 && wide >= 6, text: '你的公司遍布全球，跻身世界级企业之列。' },
-      { id: 'PHOENIX', name: '浴火重生', ok: s.restructures > 0 && V >= 1e9, text: '经历过重组，又重新站上了十亿美元。' },
-      { id: 'GLOBAL', name: '全球玩家', ok: wide >= 6 && home < 0.5 && V >= 1e9, text: '六个以上国家有你的分公司或工厂，一半以上的收入来自海外。' },
-      { id: 'REGIONAL', name: '区域霸主', ok: V >= 5e9 && maxRegion >= 0.6 && home < 0.75, text: '你在一个大区里称王。' },
-      { id: 'HOME_KING', name: '本土之王', ok: home >= 0.75 && V >= 5e8, text: '主场就是你的城堡。' },
-      { id: 'CHAMPION', name: '隐形冠军', ok: V >= 5e8 && V < 5e10 && s.quality >= 70, text: '规模不算最大，产品力却是一流。' },
+      { id: 'EMPIRE', name: '百年帝国', ok: V >= 2e11 * G && wide >= 7, text: '你的公司横跨大半个世纪，成了全世界最有价值的企业之一。' },
+      { id: 'CENTURY', name: '穿越周期', ok: sy <= 2005 && V >= 4e10 * G && s.restructures === 0, text: '从上个世纪一路走到 2070 年代，熬过了每一次危机。' },
+      { id: 'UNICORN', name: '超级独角兽', ok: s.founder === 'vc' && V >= 2.5e10 * G, text: '投资人的钱没有白花，你把公司做成了巨头。' },
+      { id: 'DYNASTY', name: '百年老店', ok: s.founder === 'family' && s.ownership >= 0.99 && s.restructures === 0 && V >= 5e9 * G, text: '股份一直握在家族手里，公司已经传了好几代。' },
+      { id: 'SOE_REBORN', name: '老树新花', ok: s.founder === 'soe' && V >= 1.5e10 * G, text: '从笨重的国企车间起步，变成了一家有活力的现代企业。' },
+      { id: 'COOP', name: '共同富裕', ok: s.founder === 'coop' && V >= 5e9 * G, text: '公司属于每一位员工，大家一起把它做大了。' },
+      { id: 'WEALTH', name: '富可敌国', ok: s.wealth >= 4e9 * G, text: '这些年分到你手里的钱，已经够买下一座城市。' },
+      { id: 'FUTURIST', name: '未来已来', ok: sy >= 2025 && V >= 1e10 * G, text: '在没人能看清的五十年里，你押对了方向。' },
+      { id: 'LATECOMER', name: '后发先至', ok: sy === 2015 && V >= 1e10 * G, text: '起步晚了二十年，却追上了老前辈。' },
+      { id: 'GIANT', name: '全球巨头', ok: V >= 5e10 * G && wide >= 6, text: '你的公司遍布全球，跻身世界级企业之列。' },
+      { id: 'PHOENIX', name: '浴火重生', ok: s.restructures > 0 && V >= 1e9 * G, text: '经历过重组，又重新站了起来。' },
+      { id: 'GLOBAL', name: '全球玩家', ok: wide >= 6 && home < 0.5 && V >= 1e9 * G, text: '六个以上国家有你的分公司或工厂，一半以上的收入来自海外。' },
+      { id: 'REGIONAL', name: '区域霸主', ok: V >= 5e9 * G && maxRegion >= 0.6 && home < 0.75, text: '你在一个大区里称王。' },
+      { id: 'HOME_KING', name: '本土之王', ok: home >= 0.75 && V >= 5e8 * G, text: '主场就是你的城堡。' },
+      { id: 'TECH', name: '技术信仰', ok: s.quality >= 97 && V >= 5e9 * G, text: '你始终相信产品力，市场最终给了回报。' },
+      { id: 'CHAMPION', name: '隐形冠军', ok: V >= 5e8 * G && V < 5e10 * G && s.quality >= 70, text: '规模不算最大，产品力却是一流。' },
       { id: 'EMERGING', name: '新兴市场先锋', ok: emerging >= 0.5, text: '一半以上的收入来自新兴市场。' },
-      { id: 'FACTORY', name: '世界工厂主', ok: this.ind.physical && lowCostFactories >= 2 && V >= 2e9, text: '你在多个低成本国家建起了工厂，把全球供应链握在手里。' },
+      { id: 'FACTORY', name: '世界工厂主', ok: this.ind.physical && lowCostFactories >= 2 && V >= 2e9 * G, text: '你在多个低成本国家建起了工厂，把全球供应链握在手里。' },
+      { id: 'PUBLIC', name: '敲钟上市', ok: !!s.ipo && V >= 1e9 * G, text: `${s.ipo} 年敲钟上市，之后一直是资本市场的宠儿。` },
+      { id: 'SEER', name: '先知', ok: fut >= 12 && V >= 3e9 * G, text: '未来的每一个十字路口，你都做了自己的判断。' },
       { id: 'SURVIVOR', name: '屡败屡战', ok: s.restructures >= 2, text: '重组了不止一次，可你始终没有放弃。' },
       { id: 'FALLEN', name: '盛极而衰', ok: peakV >= 4 * Math.max(V, 1) && peakV >= 2e9, text: '巅峰时估值是现在的好几倍，没能守住。' },
       { id: 'SCANDAL', name: '丑闻缠身', ok: cheated, text: '一次侥幸，代价是几十年的信任。' },
-      { id: 'STEADY', name: '稳健经营者', ok: s.restructures === 0 && s.debt < 0.5 * rev && V >= 2e8, text: '没有大起大落，一步一个脚印。' }
+      { id: 'STEADY', name: '稳健经营者', ok: s.restructures === 0 && s.debt < 0.5 * rev && V >= 2e8 * G, text: '没有大起大落，一步一个脚印。' }
     ].filter((e) => e.ok);
     if (!E.length) E.push({ id: 'UNFINISHED', name: '创业未竟', text: `${yrs} 年过去，故事还没讲完。` });
     return E.slice(0, 3).map((e, i) => ({ id: e.id, name: e.name, text: e.text, role: i === 0 ? 'primary' : 'secondary' }));
@@ -543,9 +856,12 @@ class BizLife {
       share: cs.share, brand: cs.brand, rev: cs.rev, profit: cs.profit, campaign: cs.campaign,
       market: this.market(cid, y), growth: this.growth(cid, y), cost: this.costIdx(cid, y), access: this.access(cid, y),
       tariff: D.interp(D.TARIFF[cid], y), source: src.from, sourceCost: src.cost, risk: c.risk,
-      isHQ: cid === s.hq
+      isHQ: cid === s.hq, income: this.income(cid, y), line: cs.level > 0 ? this.bestLine(cid, y).line : null,
+      acquire: this.acquireCheck(cid), acquireCost: this.acquireCost(cid)
     };
   }
 }
 
-module.exports = { BizLife, VERSION, D, CASES, LEVELS, LEVELS_SW, fnv1a32, country, industry };
+BizLife.D = D; BizLife.F = F; BizLife.P = P;
+
+module.exports = { BizLife, VERSION, D, F, P, CASES, BIZ_EVENTS, LEVELS, LEVELS_SW, fnv1a32, country, industry };

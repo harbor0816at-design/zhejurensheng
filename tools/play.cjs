@@ -54,7 +54,7 @@ const fs = require('fs');
   await tap('start');
   let steps = 0; let drags = 0; let cases = 0; let caseIdx = 0;
   const plan = { 1995: [['export', 'UK'], ['export', 'DE']], 1996: [['branch', 'UK']], 1997: [['campaign', hq]], 1998: [['export', 'CN'], ['export', 'JP']], 2000: [['factory', 'VN']], 2002: [['branch', 'CN']], 2004: [['export', 'IN'], ['branch', 'DE']], 2006: [['export', 'BR'], ['export', 'MX']], 2009: [['branch', 'JP']], 2012: [['branch', 'IN']], 2016: [['factory', 'MX']] };
-  while (steps++ < 400) {
+  while (steps++ < 1500) {
     const st = await state();
     if (st.k === 'ending') break;
     if (st.k === 'board') {
@@ -69,14 +69,21 @@ const fs = require('fs');
         }
       }
       if (st.year === 1996 && !shots.country) { shots.country = 1; await tap('tile-UK'); await shot('03-country', 2); await tap('back'); }
-      if (st.year === 1999 && !shots.strategy) { shots.strategy = 1; await tap('strategy'); await tapIf('rnd-high'); await shot('04-strategy', 1); await tap('back'); }
+      if (st.year === 1999 && !shots.strategy) {
+        shots.strategy = 1; await tap('strategy'); await tapIf('pol-rnd-high'); await tapIf('pol-lines-premium'); await shot('04-strategy', 2);
+        await tap('tab-capital'); await shot('04b-capital', 2); await tap('tab-org'); await tapIf('pol-ceo-pro'); await shot('04c-org', 2);
+        await tap('tab-supply'); await tapIf('pol-channel-online'); await tap('tab-overview'); await shot('04d-overview', 1); await tap('back');
+      }
+      if (st.year === 2006 && !shots.acq) { shots.acq = 1; await tap('tile-UK'); await tapIf('act-acquire'); await shot('03b-country-acq', 2); await tap('back'); }
+      if (st.year === 2030 && !shots.future) { shots.future = 1; await shot('05b-board-2030'); }
       if (st.year === 2001) await shot('05-board-2001');
       await tap('end-year');
       if ((await state()).k === 'board') await tap('end-year'); // 有剩余行动点时需要确认第二次
       continue;
     }
     if (st.k === 'case') {
-      if (!shots.case) { shots.case = 1; await shot('06-case', 2); }
+      if (!shots.case) { shots.case = 1; await tap('meta-consult'); await shot('06-case', 2); }
+      if (st.year > 2024 && !shots.fcase) { shots.fcase = 1; await tap('meta-partner'); await shot('06b-future-case', 2); }
       const opts = await page.evaluate(() => window.__app.life.caseView().options.map((o) => o.id));
       await tap('case-' + opts[caseIdx++ % opts.length]); cases++;
       continue;

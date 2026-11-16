@@ -1,8 +1,9 @@
-// 世界数据：9 个国家 × 3 个行业 × 1995–2024。
+// 世界数据：9 个国家 × 7 个行业 × 1995–2024 的历史；2025–2074 由 future.js 按种子推演。
 // GDP 为按公开数据取整的名义美元示意值（万亿美元），逐年线性插值；其余为游戏数值，不是统计数据。
 
 const START_YEAR = 1995;
-const END_YEAR = 2024;
+const HIST_END = 2024;
+const END_YEAR = 2074;
 
 const COUNTRIES = [
   { id: 'US', name: '美国', color: '#2563eb', region: 'americas',
@@ -52,14 +53,24 @@ const INDUSTRIES = [
     names: ['云帆软件', '织网科技', '星图互联', '万象数据'] },
   { id: 'auto', name: '汽车制造', short: '汽车', physical: true,
     gdpShare: 0.012, pen: { 1995: 1.0, 2007: 1.05, 2009: 0.85, 2012: 1.0, 2017: 1.08, 2020: 0.9, 2024: 1.02 },
-    gm: 0.23, comp: 320, pe: 10, tradeable: true, importCost: 0.09, factoryMult: 2,
+    gm: 0.23, comp: 320, pe: 10, tradeable: true, importCost: 0.09, factoryMult: 1.6,
     blurb: '整车制造。投入最重、利润最薄，工厂和关税决定生死，后期要面对电动化浪潮。',
     names: ['长风汽车', '远驰汽车', '北极星汽车', '新程汽车'] },
   { id: 'apparel', name: '服装零售', short: '服装', physical: true,
     gdpShare: 0.005, pen: { 1995: 1.0, 2024: 1.05 },
     gm: 0.55, comp: 380, pe: 17, tradeable: true, importCost: 0.06,
     blurb: '服装品牌和门店。人工成本敏感、潮流变得快，供应链速度和本地化决定输赢。',
-    names: ['织梦服饰', '晨曦衣橱', '简衣', '风尚集团'] }
+    names: ['织梦服饰', '晨曦衣橱', '简衣', '风尚集团'] },
+  { id: 'pharma', name: '医药健康', short: '医药', physical: true,
+    gdpShare: 0.005, pen: { 1995: 0.8, 2005: 1.0, 2015: 1.15, 2020: 1.3, 2024: 1.3 },
+    gm: 0.68, comp: 420, pe: 18, tradeable: true, importCost: 0.03,
+    blurb: '药品和医疗器械。研发投入大、审批慢、专利到期就降价；老龄化让需求越来越大。',
+    names: ['济世药业', '康宁生物', '仁心医疗', '百草集团'] },
+  { id: 'energy', name: '新能源', short: '能源', physical: true,
+    gdpShare: 0.005, pen: { 1995: 0.15, 2005: 0.3, 2010: 0.55, 2015: 0.8, 2020: 1.2, 2024: 1.6 },
+    gm: 0.27, comp: 300, pe: 15, tradeable: true, importCost: 0.07, factoryMult: 1.5,
+    blurb: '光伏、电池和储能。早年市场很小，靠补贴起步，后来增长最快；价格战和贸易壁垒是常态。',
+    names: ['光合能源', '晨阳新能', '储能先锋', '风行动力'] }
 ];
 
 // 各国对各行业外资的准入 / 适配度（0–1.2），按年份插值
@@ -68,7 +79,9 @@ const ACCESS = {
   beverage: { US: 1, CN: { 1995: 0.75, 2002: 0.95 }, JP: 0.8, DE: 0.9, UK: 1, IN: { 1995: 0.7, 2005: 0.85 }, BR: 0.95, MX: 1.05, VN: { 1995: 0.7, 2007: 0.95 } },
   software: { US: 1.05, CN: 0.35, JP: 0.7, DE: 0.85, UK: 1, IN: { 1995: 0.5, 2008: 0.9 }, BR: 0.8, MX: 0.85, VN: 0.6 },
   auto: { US: 0.95, CN: { 1995: 0.55, 2005: 0.8, 2018: 0.95 }, JP: 0.55, DE: 0.75, UK: 0.95, IN: { 1995: 0.6, 2010: 0.85 }, BR: 0.85, MX: 0.95, VN: 0.7 },
-  apparel: { US: 1, CN: { 1995: 0.75, 2005: 0.95 }, JP: 0.85, DE: 0.95, UK: 1, IN: { 1995: 0.6, 2012: 0.85 }, BR: 0.85, MX: 0.95, VN: 0.9 }
+  apparel: { US: 1, CN: { 1995: 0.75, 2005: 0.95 }, JP: 0.85, DE: 0.95, UK: 1, IN: { 1995: 0.6, 2012: 0.85 }, BR: 0.85, MX: 0.95, VN: 0.9 },
+  pharma: { US: 0.9, CN: { 1995: 0.5, 2017: 0.8 }, JP: 0.6, DE: 0.85, UK: 0.9, IN: { 1995: 0.5, 2005: 0.75 }, BR: 0.75, MX: 0.85, VN: 0.7 },
+  energy: { US: { 1995: 0.9, 2022: 0.75 }, CN: 0.7, JP: 0.8, DE: 0.95, UK: 0.95, IN: { 1995: 0.6, 2020: 0.8 }, BR: 0.85, MX: 0.85, VN: 0.8 }
 };
 
 // 进口关税（实物商品，按销售国），按年份插值
@@ -82,10 +95,10 @@ const TARIFF = {
 // 双边特殊关税：[生产国, 销售国, 起始年, 结束年, 税率]
 const SPECIAL_TARIFF = [
   ['CN', 'US', 2018, 2024, 0.25],
-  ['MX', 'US', 1995, 2024, -0.03],   // 北美自贸：相当于免关税
-  ['US', 'MX', 1995, 2024, -0.08],
-  ['UK', 'DE', 2021, 2024, 0.04],    // 脱欧后的贸易摩擦
-  ['DE', 'UK', 2021, 2024, 0.04]
+  ['MX', 'US', 1995, 2074, -0.03],   // 北美自贸：相当于免关税
+  ['US', 'MX', 1995, 2074, -0.08],
+  ['UK', 'DE', 2021, 2074, 0.04],    // 脱欧后的贸易摩擦
+  ['DE', 'UK', 2021, 2074, 0.04]
 ];
 
 // 年度宏观大事：headline 进新闻条；effects 为游戏效果
@@ -138,19 +151,41 @@ function interp(table, year) {
   return table[ys[0]];
 }
 
-// 开局年份：越晚市场越大、对手越强，起步资金也更多
+// 开局年份：越晚市场越大、对手越强，起步资金也更多。所有局都打到 2074 年。
 const START_YEARS = [
-  { year: 1995, name: '1995 · 全程', desc: '三十年完整历程：亚洲金融危机、入世、金融海啸、疫情都要经历。' },
-  { year: 2005, name: '2005 · 中途入场', desc: '全球化高歌猛进时创业，马上就要迎来金融海啸。' },
-  { year: 2015, name: '2015 · 快节奏', desc: '十年短局：移动互联网、贸易摩擦、疫情、通胀接踵而来。' }
+  { year: 1995, name: '1995', desc: '80 年全程：先走完真实的三十年历史，再闯推演中的未来五十年。' },
+  { year: 2005, name: '2005', desc: '全球化高歌猛进时创业，马上迎来金融海啸，之后进入未来五十年。' },
+  { year: 2015, name: '2015', desc: '移动互联网时代入场，经历贸易摩擦、疫情、通胀，再迎接未来。' },
+  { year: 2025, name: '2025', desc: '从今天开始，五十年全部是按种子推演的未来：AI、气候、地缘每局都不一样。' }
 ];
-// 创始背景：不同的起点、优势和短板
+// 创始背景：不同的起点、优势和短板。maxRestructure：资不抵债时最多能被救几次，超过就破产
 const FOUNDERS = [
-  { id: 'startup', name: '白手起家', desc: '标准开局，没有包袱也没有靠山。', cash: 1, quality: 45, brand: 15 },
-  { id: 'family', name: '家族企业', desc: '本土品牌深、口碑好，但家底薄、不爱借钱（信用额度减半）。', cash: 0.8, quality: 48, brand: 30, credit: 0.5 },
-  { id: 'vc', name: '风投初创', desc: '账上现金多，可创始人只占六成股份；投资人每年都盯着增长。', cash: 2.4, quality: 50, brand: 8, ownership: 0.6 },
-  { id: 'soe', name: '国企分拆', desc: '自带工厂、钱多、债也多；前五年流程慢，每年少一个行动点。', cash: 1.6, quality: 38, brand: 22, debt: 4e6, homeLevel: 3, apPenalty: 5 },
-  { id: 'geek', name: '技术极客', desc: '产品一流、研发开到最大，但品牌几乎为零、现金很紧。', cash: 0.7, quality: 68, brand: 4, rnd: 'high' }
+  { id: 'startup', name: '白手起家', desc: '标准开局，没有包袱也没有靠山。最多可重组 2 次。', cash: 1, quality: 45, brand: 15 },
+  { id: 'family', name: '家族企业', desc: '本土品牌深、口碑好，但家底薄、信用额度减半。家族不愿稀释股份，只能重组 1 次。', cash: 0.8, quality: 48, brand: 30, credit: 0.5, maxRestructure: 1 },
+  { id: 'vc', name: '风投初创', desc: '现金多，可创始人只占六成股份；投资人没耐心，只肯救 1 次。', cash: 2.4, quality: 50, brand: 8, ownership: 0.6, maxRestructure: 1 },
+  { id: 'soe', name: '国企分拆', desc: '自带工厂、钱多债也多；前五年流程慢，每年少一个行动点。背后有政府，可重组 3 次。', cash: 1.6, quality: 38, brand: 22, debt: 4e6, homeLevel: 3, apPenalty: 5, maxRestructure: 3 },
+  { id: 'geek', name: '技术极客', desc: '产品一流、研发开到最大，但品牌几乎为零、现金很紧。', cash: 0.7, quality: 68, brand: 4, rnd: 'high' },
+  { id: 'returnee', name: '海归精英', desc: '在国外名校和大公司待过：开局就在一个发达国家有出口渠道，海外品牌起点更高。', cash: 1.1, quality: 50, brand: 12, foreign: 1, foreignBrand: 12 },
+  { id: 'sales', name: '草根销售', desc: '从摆地摊做起，本土品牌响亮、营销费打六折，但产品力一般。', cash: 0.8, quality: 38, brand: 32, campaignMult: 0.6 },
+  { id: 'spinout', name: '跨国公司分拆', desc: '从外企分出来：开局在两个国家有分公司，现金充足，但你只占一半股份。', cash: 2, quality: 52, brand: 18, ownership: 0.5, foreign: 2, foreignLevel: 2 },
+  { id: 'serial', name: '连续创业者', desc: '失败过也成功过：前三年每年多一个行动点，银行也更信任你（额度 ×1.3）。', cash: 1.2, quality: 46, brand: 12, apBonus: 3, credit: 1.3 },
+  { id: 'coop', name: '员工持股', desc: '公司归员工所有，你只占三成股份；员工流失少、产品力每年多涨一点，可重组 3 次。', cash: 1, quality: 50, brand: 15, ownership: 0.3, dqBonus: 0.8, maxRestructure: 3 }
 ];
+// 创始人特长：和背景自由组合
+const TRAITS = [
+  { id: 'none', name: '没有特长', desc: '什么都会一点。' },
+  { id: 'marketer', name: '营销天才', desc: '营销费用 −40%，每年品牌多涨 1 点。' },
+  { id: 'engineer', name: '工程师', desc: '产品力每年多涨 0.8 点。' },
+  { id: 'financier', name: '财务老手', desc: '贷款利率低 1 个百分点，信用额度 ×1.3。' },
+  { id: 'diplomat', name: '外交家', desc: '在外国市场的准入度 +10%，贸易摩擦时损失更小。' },
+  { id: 'operator', name: '供应链专家', desc: '生产成本 −4%。' },
+  { id: 'gambler', name: '冒险家', desc: '每年多一个行动点，但贷款利率高 1 个百分点。' }
+];
+// 收入水平分档（影响各档产品的受欢迎程度），按年份变化
+const INCOME = {
+  US: { 1995: 3, 2074: 3 }, JP: 3, DE: 3, UK: 3,
+  CN: { 1995: 1, 2010: 2, 2045: 2.7 }, MX: { 1995: 1.8, 2060: 2.4 }, BR: { 1995: 1.8, 2060: 2.3 },
+  IN: { 1995: 1, 2035: 1.5, 2074: 2.2 }, VN: { 1995: 1, 2030: 1.6, 2074: 2.3 }
+};
 
-module.exports = { START_YEARS, FOUNDERS, START_YEAR, END_YEAR, COUNTRIES, INDUSTRIES, ACCESS, TARIFF, SPECIAL_TARIFF, EVENTS, BASE_RATE, interp };
+module.exports = { START_YEARS, FOUNDERS, TRAITS, INCOME, START_YEAR, HIST_END, END_YEAR, COUNTRIES, INDUSTRIES, ACCESS, TARIFF, SPECIAL_TARIFF, EVENTS, BASE_RATE, interp };

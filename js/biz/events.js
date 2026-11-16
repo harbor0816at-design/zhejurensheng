@@ -7,7 +7,7 @@ const pickOf = (arr, rnd) => arr[Math.floor(rnd() * arr.length) % arr.length];
 
 const BIZ_EVENTS = [
   {
-    id: 'X_POACH', years: [1995, 2024], title: '对手来挖人', era: '经营事件',
+    id: 'X_POACH', years: [1995, 2074], title: '对手来挖人', era: '经营事件',
     situation: '你的研发负责人收到了竞争对手翻倍的薪水邀请，还想带走半个团队。',
     options: [
       { id: 'match', text: '加薪挽留，再给股权激励', hint: '花钱留人',
@@ -23,7 +23,7 @@ const BIZ_EVENTS = [
     theory: { name: '人力资本', text: '知识型公司的核心资产每天晚上都会走出大门。股权激励把员工的利益和公司长期价值绑在一起。' }
   },
   {
-    id: 'X_VIRAL', years: [2010, 2024], title: '突然火了', era: '经营事件',
+    id: 'X_VIRAL', years: [2010, 2074], title: '突然火了', era: '经营事件',
     ctx: (s, rnd) => ({ C: pickOf(entered(s), rnd) }),
     situation: '一位{C}的网红随手发了一条用你产品的视频，播放量破了千万，门店和网店被挤爆。',
     options: [
@@ -39,7 +39,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_PATENT', years: [1998, 2024], title: '专利官司', era: '经营事件',
+    id: 'X_PATENT', years: [1998, 2074], title: '专利官司', era: '经营事件',
     situation: '一家只靠打官司赚钱的专利公司起诉你，说你的核心产品侵犯了它的专利，索赔一大笔钱。',
     options: [
       { id: 'settle', text: '花钱和解', hint: '破财消灾',
@@ -54,7 +54,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_FIRE', years: [1995, 2024], title: '工厂失火', era: '经营事件',
+    id: 'X_FIRE', years: [1995, 2074], title: '工厂失火', era: '经营事件',
     cond: (s) => physical(s) && Object.keys(s.countries).some((c) => s.countries[c].level >= 3),
     ctx: (s, rnd) => ({ C: pickOf(Object.keys(s.countries).filter((c) => s.countries[c].level >= 3), rnd) }),
     situation: '{C}工厂的一条生产线深夜起火，无人伤亡，但设备烧毁，旺季订单眼看要交不了货。',
@@ -68,7 +68,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_LEAK', years: [2006, 2024], title: '用户数据泄露', era: '经营事件',
+    id: 'X_LEAK', years: [2006, 2074], title: '用户数据泄露', era: '经营事件',
     situation: '安全团队发现黑客入侵了会员系统，几百万条用户资料可能已经流出。目前外界还不知道。',
     options: [
       { id: 'disclose', text: '立即公开，通知用户并免费提供保护服务', hint: '主动认错',
@@ -82,7 +82,7 @@ const BIZ_EVENTS = [
     theory: { name: '信息披露', text: '许多国家的法律要求企业在发现数据泄露后限期通报。研究和案例都表明，隐瞒被发现后的代价远高于主动披露。' }
   },
   {
-    id: 'X_STRIKE', years: [1995, 2024], title: '工人要求加薪', era: '经营事件',
+    id: 'X_STRIKE', years: [1995, 2074], title: '工人要求加薪', era: '经营事件',
     cond: physical,
     ctx: (s, rnd) => ({ C: pickOf(entered(s), rnd) }),
     situation: '{C}的员工因为物价上涨要求加薪 15%，工会威胁下周开始罢工。',
@@ -99,7 +99,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_BIGCLIENT', years: [1995, 2024], title: '大客户压价', era: '经营事件',
+    id: 'X_BIGCLIENT', years: [1995, 2074], title: '大客户压价', era: '经营事件',
     cond: (s) => s.industry !== 'apparel',
     situation: '全国最大的连锁渠道愿意把你的产品放进所有门店，条件是价格再降 15%，而且三年内不许卖给它的对手。',
     options: [
@@ -117,7 +117,7 @@ const BIZ_EVENTS = [
     theory: { name: '五力模型 · 买方议价力', text: '迈克尔·波特的五力模型里，买方越集中、对你越重要，你的议价能力就越弱。依赖单一大客户会让利润被一点点挤掉。' }
   },
   {
-    id: 'X_SUBSIDY', years: [1997, 2024], title: '招商引资', era: '经营事件',
+    id: 'X_SUBSIDY', years: [1997, 2074], title: '招商引资', era: '经营事件',
     cond: (s) => physical(s) && ['VN', 'IN', 'MX', 'BR', 'CN'].some((c) => s.countries[c].level < 3 && c !== s.hq),
     ctx: (s, rnd) => { const l = ['VN', 'IN', 'MX', 'BR', 'CN'].filter((c) => s.countries[c].level < 3 && c !== s.hq); return { C: l.length ? pickOf(l, rnd) : 'VN' }; },
     situation: '{C}的一个工业园区找上门：免费土地、五年免税，只要你在那里建一座工厂。',
@@ -148,7 +148,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_SCANDAL', years: [1995, 2024], title: '高管失言', era: '经营事件',
+    id: 'X_SCANDAL', years: [1995, 2074], title: '高管失言', era: '经营事件',
     situation: '一位高管在私人聚会上的冒犯性言论被人录下来，在网上疯传，话题冲上热搜。',
     options: [
       { id: 'fire', text: '当天解职，公开道歉', hint: '果断切割',
@@ -161,7 +161,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_INVESTOR', years: [2000, 2024], title: '战略投资人上门', era: '经营事件',
+    id: 'X_INVESTOR', years: [2000, 2074], title: '战略投资人上门', era: '经营事件',
     situation: '一家行业巨头想入股你的公司，愿意按比市价高两成的估值投一大笔钱，条件是给它一个董事席位。',
     options: [
       { id: 'yes', text: '接受投资', hint: '现金大增，股份稀释',
@@ -176,7 +176,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_PRICEWAR', years: [1995, 2024], title: '价格战', era: '经营事件',
+    id: 'X_PRICEWAR', years: [1995, 2074], title: '价格战', era: '经营事件',
     ctx: (s, rnd) => ({ C: pickOf(entered(s), rnd) }),
     situation: '{C}市场的头号对手突然全线降价 25%，摆明了要抢份额。',
     options: [
@@ -192,7 +192,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_TALENT', years: [1995, 2024], title: '一支明星团队想加入', era: '经营事件',
+    id: 'X_TALENT', years: [1995, 2074], title: '一支明星团队想加入', era: '经营事件',
     situation: '一家倒闭创业公司的技术团队找到你，他们做出过很厉害的东西，但开价不低，而且习惯自由散漫。',
     options: [
       { id: 'hire', text: '整体收编，单独成立创新实验室', hint: '花钱买人才',
@@ -207,7 +207,7 @@ const BIZ_EVENTS = [
     ]
   },
   {
-    id: 'X_FX', years: [1995, 2024], title: '汇率大跳水', era: '经营事件',
+    id: 'X_FX', years: [1995, 2074], title: '汇率大跳水', era: '经营事件',
     cond: (s) => entered(s).length >= 3,
     ctx: (s, rnd) => ({ C: pickOf(entered(s).filter((c) => c !== s.hq).concat(['BR']), rnd) }),
     situation: '{C}货币一个月贬值三成，你在那里的收入换回本币缩水了一大截。财务总监问要不要做汇率对冲。',
@@ -220,6 +220,87 @@ const BIZ_EVENTS = [
         outcomes: [{ p: 1, title: '自然对冲', text: '当地成本也便宜了，长期更稳。', effects: [{ t: 'mod', attract: { '{C}': 1.05 }, years: 4 }] }] }
     ],
     theory: { name: '汇率风险', text: '跨国公司面对交易风险、折算风险和经济风险。金融对冲管短期，把生产和采购放到销售地（“自然对冲”）管长期。' }
+  },
+  {
+    id: 'X_DEEPFAKE', years: [2026, 2074], title: '假的 CEO', era: '经营事件',
+    situation: '网上流传一段视频：“你”在宣布公司要大裁员、产品有安全隐患。视频是 AI 伪造的，但已经有几百万人看过，股价开始下跌。',
+    options: [
+      { id: 'live', text: '马上亲自直播辟谣，公布技术鉴定', hint: '正面回应',
+        outcomes: [{ p: 1, title: '谣言止住了', text: '大部分人相信了你的澄清。', effects: [{ t: 'brand', v: -1 }] }] },
+      { id: 'legal', text: '起诉平台和造假者', hint: '法律途径',
+        outcomes: [{ p: 1, title: '赢了官司，慢了一步', text: '判决下来时，谣言已经传遍全网。', effects: [{ t: 'cash', v: -0.005, min: 2e5 }, { t: 'brand', v: -4 }] }] },
+      { id: 'tech', text: '给所有官方视频加上防伪水印，以后一律以此为准', hint: '一劳永逸',
+        outcomes: [{ p: 1, title: '有了防伪体系', text: '这次损失了一点，以后再没人能冒充你。', effects: [{ t: 'cash', v: -0.005, min: 2e5 }, { t: 'brand', v: -2 }] }] }
+    ]
+  },
+  {
+    id: 'X_DRONE', years: [2030, 2074], title: '无人机送货出事故', era: '经营事件',
+    cond: (s) => s.industry !== 'software',
+    situation: '你家的一架送货无人机在居民区坠落，砸坏了一辆车，好在没有伤人。视频在网上疯传，监管部门要求说明情况。',
+    options: [
+      { id: 'pause', text: '全城暂停无人机配送，彻查原因', hint: '安全第一',
+        outcomes: [{ p: 1, title: '负责任', text: '配送慢了一个月，但信任保住了。', effects: [{ t: 'mod', attract: { '*': 0.98 }, years: 1 }, { t: 'brand', v: 1 }] }] },
+      { id: 'pay', text: '赔偿车主，配送照常', hint: '个案处理',
+        outcomes: [
+          { p: 0.7, title: '小插曲', text: '风波很快过去。', effects: [{ t: 'cash', v: -0.002, min: 5e4 }] },
+          { p: 0.3, title: '又掉了一架', text: '监管部门直接吊销了你的飞行许可。', effects: [{ t: 'cash', v: -0.01, min: 3e5 }, { t: 'brand', v: -6 }] }
+        ] }
+    ]
+  },
+  {
+    id: 'X_CLIMATE_SUIT', years: [2028, 2074], title: '气候诉讼', era: '经营事件',
+    cond: (s) => s.industry !== 'software',
+    situation: '一群年轻人起诉你的公司，要求为历史碳排放造成的气候损害赔偿。类似的诉讼在多个国家都有原告胜诉。',
+    options: [
+      { id: 'settle', text: '和解，出资建立气候适应基金', hint: '花钱平息',
+        outcomes: [{ p: 1, title: '和解了', text: '花了一笔钱，换来了不错的口碑。', effects: [{ t: 'cash', v: -0.015, min: 5e5 }, { t: 'brand', v: 3 }] }] },
+      { id: 'fight', text: '应诉，证明自己已经尽到减排义务', hint: '据理力争',
+        outcomes: [
+          { p: 0.55, title: '胜诉', text: '法院认为你的减排努力足够。', effects: [{ t: 'cash', v: -0.005, min: 2e5 }] },
+          { p: 0.45, title: '败诉', text: '赔偿金额不小，还要公开道歉。', effects: [{ t: 'cash', v: -0.04, min: 1e6 }, { t: 'brand', v: -6 }] }
+        ] }
+    ]
+  },
+  {
+    id: 'X_AI_GENIUS', years: [2026, 2074], title: '天才研究员', era: '经营事件',
+    situation: '一位全球顶尖的 AI 研究员愿意加入你，开价是一年 5000 万美元外加大量股权。她说能让你的产品领先对手好几年。',
+    options: [
+      { id: 'hire', text: '答应她的条件', hint: '天价人才',
+        outcomes: [
+          { p: 0.6, title: '物超所值', text: '她带来的技术让产品脱胎换骨。', effects: [{ t: 'cash', v: -0.01, min: 5e5 }, { t: 'quality', v: 7 }] },
+          { p: 0.4, title: '水土不服', text: '一年后她被另一家公司以更高价挖走。', effects: [{ t: 'cash', v: -0.01, min: 5e5 }, { t: 'quality', v: 1 }] }
+        ] },
+      { id: 'lab', text: '为她单独建一个独立实验室，按成果分红', hint: '风险共担',
+        outcomes: [{ p: 1, title: '独立实验室', text: '她很满意，成果稳步产出。', effects: [{ t: 'cash', v: -0.006, min: 3e5 }, { t: 'quality', v: 4 }] }] },
+      { id: 'no', text: '太贵了，婉拒', hint: '不花钱',
+        outcomes: [{ p: 1, title: '她去了对手那里', text: '希望她做不出太厉害的东西。', effects: [] }] }
+    ]
+  },
+  {
+    id: 'X_HEATWAVE', years: [2030, 2074], title: '热浪停电', era: '经营事件',
+    cond: (s) => s.industry !== 'software' && s.world.dials.climate !== 'orderly',
+    ctx: (s, rnd) => { const l = Object.keys(s.countries).filter((c) => s.countries[c].level >= 2); return { C: l.length ? l[Math.floor(rnd() * l.length) % l.length] : s.hq }; },
+    situation: '{C}遭遇创纪录的热浪，电网限电，你在当地的运营每天只能开工几个小时。',
+    options: [
+      { id: 'gen', text: '租用柴油发电机和储能，保证生产', hint: '花钱保产',
+        outcomes: [{ p: 1, title: '没停工', text: '电费贵了，订单没耽误。', effects: [{ t: 'cash', v: -0.006, min: 2e5 }] }] },
+      { id: 'night', text: '改成夜班生产', hint: '错峰',
+        outcomes: [{ p: 1, title: '错峰生产', text: '产量少了一点，员工有些怨言。', effects: [{ t: 'share', m: { '{C}': 0.96 } }] }] },
+      { id: 'stop', text: '停工等热浪过去', hint: '不花钱',
+        outcomes: [{ p: 1, title: '停了一个月', text: '当地客户等不及了。', effects: [{ t: 'share', m: { '{C}': 0.9 } }] }] }
+    ]
+  },
+  {
+    id: 'X_SUPPLIER_AI', years: [2030, 2074], title: '供应商的 AI 在压价', era: '经营事件',
+    situation: '你的主要供应商换上了 AI 谈判系统，它能精确算出你的底线，每次谈判都让你多付一点。',
+    options: [
+      { id: 'ai', text: '也上 AI 谈判系统，以 AI 对 AI', hint: '技术对抗',
+        outcomes: [{ p: 1, title: '势均力敌', text: '采购成本稳住了。', effects: [{ t: 'cash', v: -0.004, min: 2e5 }, { t: 'mod', gm: 0.005, years: 5 }] }] },
+      { id: 'more', text: '多找几家供应商，让它们互相竞争', hint: '分散采购',
+        outcomes: [{ p: 1, title: '议价权回来了', text: '供应商不敢再狮子大开口。', effects: [{ t: 'mod', gm: 0.004, years: 5 }] }] },
+      { id: 'accept', text: '接受，维护关系', hint: '息事宁人',
+        outcomes: [{ p: 1, title: '成本悄悄上涨', text: '每年多付一点。', effects: [{ t: 'mod', gm: -0.008, years: 5 }] }] }
+    ]
   }
 ];
 

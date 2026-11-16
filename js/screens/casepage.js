@@ -27,15 +27,25 @@ function casePage(app) {
       const v = life.caseView();
       if (!v) return;
       status(f, life, { noAp: true });
-      folder(f, v.event ? '突发事件' : '案例时刻', v.title, v.era);
+      folder(f, v.event ? '突发事件' : (v.future ? '未来推演' : '案例时刻'), v.title, v.era);
       f.card({}, (c) => {
         c.text(v.situation, { size: 15, color: T.c.body, lh: 1.7 });
       });
+      // 解决方式：咨询 / 合作 / 推迟
+      f.text('先想想怎么解决：', { size: 13, weight: 600, color: T.c.onDarkMuted, lh: 1.8 });
+      f.seg([
+        { label: v.consulted ? '已咨询 ✓' : `请咨询公司 ${F.usd(v.consultCost, { short: true })}`, on: v.consulted, onTap: () => app.caseMeta('consult'), id: 'meta-consult' },
+        { label: v.partnered ? '找伙伴 ✓' : '找伙伴分担', on: v.partnered, onTap: () => app.caseMeta('partner'), id: 'meta-partner' },
+        { label: '推迟一年', on: false, onTap: () => (v.canDefer ? app.caseMeta('defer') : app.toast('这件事拖不了，必须现在决定')), id: 'meta-defer' }
+      ], { size: 12 });
+      f.text(v.partnered ? '和伙伴合作：花费和收获都打五五折，适合没把握的时候。' : '咨询公司会告诉你每个选项各种结果的概率；找伙伴能分摊风险；推迟会让市场观望一年。', { size: 11, color: T.c.onDarkMuted, lh: 1.55 });
+      f.gap(4);
       f.text('你怎么选？', { size: 13, weight: 600, color: T.c.onDarkMuted, lh: 1.8 });
       v.options.forEach((o, i) => {
-        f.card({ stripe: ['#2563eb', '#7c3aed', '#0d9488'][i % 3], onTap: () => app.chooseCase(o.id), id: 'case-' + o.id, after: 10 }, (c) => {
+        f.card({ stripe: ['#2563eb', '#7c3aed', '#0d9488', '#ea580c'][i % 4], onTap: () => app.chooseCase(o.id), id: 'case-' + o.id, after: 10 }, (c) => {
           c.text(o.text, { size: 16, weight: 700, color: T.c.ink, lh: 1.45 });
           if (o.hint) c.text(o.hint, { size: 12, color: T.c.muted, lh: 1.5 });
+          if (o.odds) c.text(o.odds.map((x) => `${Math.round(x.p * 100)}%「${x.title}」`).join('　'), { size: 12, weight: 600, color: T.c.violet, lh: 1.5 });
         });
       });
     }
@@ -63,7 +73,7 @@ function revealPage(app) {
       if (r.history) f.card({ bg: '#fffbeb' }, (c) => {
         const y = c.y;
         icon(c.push.bind(c), 'book', c.x, y + 1, 18, '#b45309');
-        c.text('真实历史', { size: 14, weight: 700, color: '#92400e', indent: 26, lh: 1.5 });
+        c.text(r.future ? '推演依据' : '真实历史', { size: 14, weight: 700, color: '#92400e', indent: 26, lh: 1.5 });
         c.gap(4);
         c.text(r.history, { size: 14, color: '#451a03', lh: 1.7 });
       });

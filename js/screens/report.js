@@ -47,7 +47,8 @@ function reportPage(app) {
     body(f) {
       status(f, life, { noAp: true, year: r.year });
       f.card({}, (c) => {
-        c.eyebrow(`${r.year} 年报`);
+        c.eyebrow(`${r.year} 年报${r.future ? ' · 推演' : ''}`);
+        if (r.bankrupt) c.title('公司破产了', { size: 24, color: T.c.neg });
         c.title(r.net >= 0 ? `赚了 ${F.usd(r.net)}` : `亏了 ${F.usd(-r.net)}`, { size: 22, color: r.net >= 0 ? T.c.pos : T.c.neg });
         if (r.headline) c.text(r.headline, { size: 12, color: T.c.muted, lh: 1.55 });
         c.gap(8);
@@ -59,12 +60,31 @@ function reportPage(app) {
           { k: '估值', v: `${F.usd(r.valuation)}${prev ? (dv >= 0 ? ' ▲' : ' ▼') : ''}`, color: dv < 0 ? T.c.neg : T.c.ink }
         ], 2, { valueSize: 15 });
         if (r.revenue > 0) { c.sectionTitle('钱是怎么花掉的'); waterfall(c, r); }
+        if (r.dividend > 0 || r.bondRepaid > 0) {
+          c.gap(6);
+          if (r.dividend > 0) c.row('分红（你拿到）', `${F.usd(r.dividend)}（${F.usd(r.dividend * life.s.ownership)}）`, { size: 13 });
+          if (r.bondRepaid > 0) c.row('到期债券还本', F.usd(r.bondRepaid), { size: 13, valueColor: T.c.neg });
+        }
+        if (r.breakthrough) {
+          c.gap(8);
+          c.card({ bg: T.c.accentSoft, pad: 12, after: 0 }, (k) => {
+            k.text('研发出了爆品！', { size: 14, weight: 700, color: T.c.accentDark, lh: 1.5 });
+            k.text('颠覆创新的投入有了回报：产品力和各国品牌力大幅提升。', { size: 12, color: T.c.body, lh: 1.55 });
+          });
+        }
         if (r.restructured) {
           c.gap(8);
           c.card({ bg: T.c.negSoft, pad: 12, after: 0 }, (k) => {
             k.text('现金断了，公司进入重组', { size: 14, weight: 700, color: T.c.neg, lh: 1.5 });
             const sold = r.restructured.sold.map((id) => life.countryView(id).name).join('、');
-            k.text(`${sold ? `收缩了${sold}的业务；` : ''}新股东注资 ${F.usd(r.restructured.injected)}，债权人减免 ${F.usd(r.restructured.haircut)}。你的持股被稀释，但公司还在。`, { size: 12, color: T.c.body, lh: 1.55 });
+            k.text(`${sold ? `收缩了${sold}的业务；` : ''}新股东注资 ${F.usd(r.restructured.injected)}，债权人减免 ${F.usd(r.restructured.haircut)}。你的持股被稀释。${r.restructured.left > 0 ? `还能再重组 ${r.restructured.left} 次。` : '这是最后一次机会，再撑不住就会破产。'}`, { size: 12, color: T.c.body, lh: 1.55 });
+          });
+        }
+        if (r.bankrupt) {
+          c.gap(8);
+          c.card({ bg: T.c.negSoft, pad: 12, after: 0 }, (k) => {
+            k.text('资不抵债，破产清算', { size: 14, weight: 700, color: T.c.neg, lh: 1.5 });
+            k.text(`现金缺口 ${F.usd(-r.bankrupt.cash)}，负债 ${F.usd(r.bankrupt.debt)}。${r.bankrupt.why}。`, { size: 12, color: T.c.body, lh: 1.55 });
           });
         }
       });
@@ -97,13 +117,25 @@ function curve(c, life) {
   c.custom(150, (push, x, y, w, H) => {
     const vals = h.map((p) => p.valuation);
     const hi = Math.max(...vals, 1);
+    const pos = vals.filter((v) => v > 0);
+    const lo = Math.max(hi / 1e5, Math.min(...(pos.length ? pos : [1])));
+    const logScale = hi / lo > 50; // 跨度太大时用对数坐标，早年的起伏也看得见
     const X = (i) => x + 8 + i / (h.length - 1) * (w - 16);
-    const Y = (v) => y + H - 24 - v / hi * (H - 44);
+    const Y = (v) => {
+      if (!logScale) return y + H - 24 - v / hi * (H - 44);
+      const t = v <= lo ? 0 : (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo));
+      return y + H - 24 - t * (H - 44);
+    };
     push({ t: 'rect', x, y, w, h: H, r: 10, fill: T.c.soft });
     const pts = h.map((p, i) => [X(i), Y(p.valuation)]);
     push({ t: 'poly', pts: [[X(0), Y(0)]].concat(pts, [[X(h.length - 1), Y(0)]]), fill: 'rgba(37,99,235,0.12)' });
     push({ t: 'poly', pts, color: T.c.accent, lw: 2 });
     h.forEach((p, i) => { if (p.restructured) push({ t: 'circle', x: X(i), y: Y(p.valuation), r: 4, fill: T.c.neg }); });
+    const lastP = h[h.length - 1];
+    if (lastP.bankrupt) { const bx = X(h.length - 1); const by = Y(0); push({ t: 'line', x1: bx - 6, y1: by - 6, x2: bx + 6, y2: by + 6, color: T.c.neg, lw: 3 }); push({ t: 'line', x1: bx - 6, y1: by + 6, x2: bx + 6, y2: by - 6, color: T.c.neg, lw: 3 }); }
+    if (logScale) push({ t: 'text', x: x + w - 8, y: y + 16, s: '对数坐标', font: T.font(10), color: T.c.faint, align: 'right' });
+    const fx = h.findIndex((p) => p.year === 2025);
+    if (fx > 0) { push({ t: 'line', x1: X(fx), y1: y + 22, x2: X(fx), y2: y + H - 22, color: 'rgba(109,40,217,0.35)', lw: 1 }); push({ t: 'text', x: X(fx) + 4, y: y + 30, s: '推演 →', font: T.font(10), color: T.c.violet }); }
     life.s.caseLog.forEach((cs) => { const i = cs.year - h[0].year; if (i >= 0 && i < h.length) push({ t: 'circle', x: X(i), y: Y(h[i].valuation), r: 3.5, fill: '#f59e0b' }); });
     push({ t: 'text', x: x + 8, y: y + 16, s: F.usd(hi, { short: true }), font: T.font(10), color: T.c.muted });
     push({ t: 'text', x: x + 8, y: y + H - 6, s: String(h[0].year), font: T.font(10), color: T.c.muted });
@@ -121,7 +153,7 @@ function endingPage(app) {
     header: header(app),
     body(f) {
       f.card({ pad: 20 }, (c) => {
-        c.text(`${s.name} · ${s.startYear || 1995}–2024`, { size: 12, weight: 600, color: T.c.accent, align: 'center', lh: 1.6 });
+        c.text(`${s.name} · ${s.startYear || 1995}–${s.year}`, { size: 12, weight: 600, color: T.c.accent, align: 'center', lh: 1.6 });
         c.text(primary.name, { size: 34, weight: 800, color: '#1e1b4b', align: 'center', lh: 1.35 });
         if (secondary.length) c.text(secondary.map((e) => e.name).join(' · '), { size: 15, weight: 600, color: T.c.violet, align: 'center', lh: 1.6 });
         c.text(primary.text, { size: 14, color: T.c.body, align: 'center', lh: 1.6 });
@@ -130,19 +162,22 @@ function endingPage(app) {
         c.tiles([
           { k: '企业估值', v: F.usd(s.valuation) },
           { k: '你的持股价值', v: F.usd(s.valuation * s.ownership) },
-          { k: '2024 年收入', v: F.usd(last.revenue) },
-          { k: '进入国家', v: `${Object.values(s.countries).filter((x) => x.level > 0).length} 个` }
+          { k: `${s.year} 年收入`, v: F.usd(last.revenue) },
+          { k: '个人财富（分红）', v: F.usd(s.wealth) }
         ], 2, { after: 0 });
       });
       f.card({}, (c) => {
-        c.sectionTitle(`${2025 - (s.startYear || 1995)} 年估值曲线`, '橙点 = 案例时刻，红点 = 重组');
+        c.sectionTitle(`${s.year - (s.startYear || 1995) + 1} 年估值曲线`, '橙点 = 案例，红点 = 重组');
         curve(c, life);
         c.sectionTitle('最终布局');
         const lv = life.ind.physical ? ['—', '出口', '分公司', '工厂'] : ['—', '线上', '分公司', '数据中心'];
         c.tiles(D.COUNTRIES.map((cc) => ({ k: cc.name, v: lv[s.countries[cc.id].level], color: s.countries[cc.id].level ? cc.color : T.c.faint })), 3, { valueSize: 13, after: 0 });
       });
       f.card({}, (c) => {
-        c.sectionTitle('案例复盘', '你的选择和历史对照');
+        c.sectionTitle('案例复盘', `共 ${s.caseLog.length} 个抉择`);
+        const fd = life.fd; const dv = life.constructor.F.dialView(s.world.dials);
+        c.text(`出身：${fd.name}　未来大势：${dv.map((d) => d.label).join(' / ')}`, { size: 12, color: T.c.muted, lh: 1.6 });
+        c.divider(5);
         s.caseLog.forEach((cs) => {
           c.text(`${cs.year} · ${cs.title}`, { size: 14, weight: 700, color: T.c.ink, lh: 1.5 });
           c.text(`你：${cs.option} → ${cs.outcome}`, { size: 12, color: T.c.body, lh: 1.5 });
@@ -159,7 +194,7 @@ function endingPage(app) {
         ], { h: 44, size: 14 });
         c.button('回到首页', () => app.goHome(), { kind: 'link', h: 34, size: 13, after: 0, id: 'home' });
       });
-      f.text('历史事件按公开资料改写；市场数据为游戏示意值，不构成投资建议。', { size: 11, color: T.c.onDarkMuted, align: 'center', lh: 1.6 });
+      f.text('历史事件按公开资料改写；2025 年以后为按种子生成的推演，不是预测；市场数据为游戏示意值，不构成投资建议。', { size: 11, color: T.c.onDarkMuted, align: 'center', lh: 1.6 });
     }
   };
 }
